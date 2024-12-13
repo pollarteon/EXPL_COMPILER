@@ -18,10 +18,10 @@ struct tnode *makeNUMNode(int n)
 {
     struct tnode *temp;
     temp = (struct tnode *)malloc(sizeof(struct tnode));
-    temp->type = integerType;
+    temp->type = INTEGER_TYPE;
     temp->val = n; //useful for NUM Node
     temp->op = NULL;
-    temp->nodetype = -1;
+    temp->nodetype = CONST_NODE;
     temp->varname = NULL;
     temp->left = NULL;
     temp->right = NULL;
@@ -32,12 +32,13 @@ struct tnode *makeNUMNode(int n)
 struct tnode* makeIDNode(char* varName){
     struct tnode* temp;
     temp = (struct tnode*)malloc(sizeof(struct tnode));
-    temp->type = integerType;
+    temp->type = INTEGER_TYPE;
     temp->val = -1;
     temp->left=NULL;
     temp->right=NULL;
     temp->op=NULL;
     temp->val=-1;
+    temp->nodetype = IDENTIFIER_NODE;
     temp->varname = varName; //useful for Identifier Node
     // printf("MADE ID NODE: %c\n",*(temp->varname));
     return temp;
@@ -50,7 +51,7 @@ struct tnode* makeNonLeafNode(struct tnode* l,struct tnode* r,int nodeType,char 
     temp->nodetype=nodeType;
     temp->type = -1;
     temp->varname = NULL;
-    if(temp->nodetype==operatorNode){
+    if(temp->nodetype==OPERATOR_NODE){
         temp->op = malloc(sizeof(char));
         *(temp->op) = op;
     }else{
@@ -90,16 +91,16 @@ struct tnode* makeNonLeafNode(struct tnode* l,struct tnode* r,int nodeType,char 
 void preorder(struct tnode* root){
 
     if(root==NULL) return;
-    if(root->nodetype==operatorNode){
+    if(root->nodetype==OPERATOR_NODE){
         printf("%c ",*(root->op));
     }
-    else if(root->nodetype==connectorNode){
+    else if(root->nodetype==CONNECTOR_NODE){
         printf("connector ");
     }
-    else if (root->nodetype==readNode){
+    else if (root->nodetype==READ_NODE){
         printf("read ");
     }
-    else if(root->nodetype==writeNode){
+    else if(root->nodetype==WRITE_NODE){
         printf("write ");
     }
     else if(root->val!=-1){

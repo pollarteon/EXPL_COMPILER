@@ -1,6 +1,11 @@
 begin
     read(a);
+    read(b);
+
+    k = a + 2*b ;
+    write (d+a);
     write(b);
-    d = a+2*b;
-    write (a+d);
+    c = 900+b;
+    write(c*(98/98)+3);
+
 end;

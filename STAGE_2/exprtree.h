@@ -1,10 +1,13 @@
-#define IDNode 1
-#define NUMNode 2
-#define readNode 3
-#define connectorNode 4
-#define writeNode 5
-#define operatorNode 6
-#define integerType 7
+#define ID_NODE 1
+#define NUM_NODE 2
+#define READ_NODE 3
+#define CONNECTOR_NODE 4
+#define WRITE_NODE 5
+#define OPERATOR_NODE 6
+#define CONST_NODE 7
+#define IDENTIFIER_NODE 8
+#define INTEGER_TYPE 9
+
 
 
 typedef struct tnode{
