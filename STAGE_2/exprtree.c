@@ -1,16 +1,16 @@
 // #include "exprtree.h"
 
-
-struct tnode* createTree(int val,int type,char* c ,struct tnode* l,struct tnode* r){
-    struct tnode* temp;
-    temp = (struct tnode*)malloc(sizeof(struct tnode));
+struct tnode *createTree(int val, int type, char *c, struct tnode *l, struct tnode *r)
+{
+    struct tnode *temp;
+    temp = (struct tnode *)malloc(sizeof(struct tnode));
     temp->type = -1;
     temp->op = c;
     temp->val = val;
-    temp->left =l;
+    temp->left = l;
     temp->right = r;
-    temp->varname=NULL;
-    temp->nodetype=type;
+    temp->varname = NULL;
+    temp->nodetype = type;
     return temp;
 }
 
@@ -19,7 +19,7 @@ struct tnode *makeNUMNode(int n)
     struct tnode *temp;
     temp = (struct tnode *)malloc(sizeof(struct tnode));
     temp->type = INTEGER_TYPE;
-    temp->val = n; //useful for NUM Node
+    temp->val = n; // useful for NUM Node
     temp->op = NULL;
     temp->nodetype = CONST_NODE;
     temp->varname = NULL;
@@ -29,36 +29,41 @@ struct tnode *makeNUMNode(int n)
     return temp;
 }
 
-struct tnode* makeIDNode(char* varName){
-    struct tnode* temp;
-    temp = (struct tnode*)malloc(sizeof(struct tnode));
+struct tnode *makeIDNode(char *varName)
+{
+    struct tnode *temp;
+    temp = (struct tnode *)malloc(sizeof(struct tnode));
     temp->type = INTEGER_TYPE;
     temp->val = -1;
-    temp->left=NULL;
-    temp->right=NULL;
-    temp->op=NULL;
-    temp->val=-1;
+    temp->left = NULL;
+    temp->right = NULL;
+    temp->op = NULL;
+    temp->val = -1;
     temp->nodetype = IDENTIFIER_NODE;
-    temp->varname = varName; //useful for Identifier Node
+    temp->varname = varName; // useful for Identifier Node
     // printf("MADE ID NODE: %c\n",*(temp->varname));
     return temp;
 }
 
-struct tnode* makeNonLeafNode(struct tnode* l,struct tnode* r,int nodeType,char op){
-    struct tnode* temp;
-    temp = (struct tnode*) malloc(sizeof(struct tnode));
-    temp->val=-1;
-    temp->nodetype=nodeType;
+struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, char op)
+{
+    struct tnode *temp;
+    temp = (struct tnode *)malloc(sizeof(struct tnode));
+    temp->val = -1;
+    temp->nodetype = nodeType;
     temp->type = -1;
     temp->varname = NULL;
-    if(temp->nodetype==OPERATOR_NODE){
+    if (temp->nodetype == OPERATOR_NODE)
+    {
         temp->op = malloc(sizeof(char));
         *(temp->op) = op;
-    }else{
-        temp->op=NULL;
     }
-    temp->left=l;
-    temp->right=r;
+    else
+    {
+        temp->op = NULL;
+    }
+    temp->left = l;
+    temp->right = r;
     return temp;
 }
 
@@ -88,40 +93,53 @@ struct tnode* makeNonLeafNode(struct tnode* l,struct tnode* r,int nodeType,char 
 //     }
 // }
 
-void preorder(struct tnode* root){
+void preorder(struct tnode *root)
+{
 
-    if(root==NULL) return;
-    if(root->nodetype==OPERATOR_NODE){
-        printf("%c ",*(root->op));
+    if (root == NULL)
+        return;
+    if (root->nodetype == OPERATOR_NODE)
+    {
+        printf("%c ", *(root->op));
     }
-    else if(root->nodetype==CONNECTOR_NODE){
+    else if (root->nodetype == CONNECTOR_NODE)
+    {
         printf("connector ");
     }
-    else if (root->nodetype==READ_NODE){
+    else if (root->nodetype == READ_NODE)
+    {
         printf("read ");
     }
-    else if(root->nodetype==WRITE_NODE){
+    else if (root->nodetype == WRITE_NODE)
+    {
         printf("write ");
     }
-    else if(root->val!=-1){
-        printf("%d ",root->val);
+    else if (root->val != -1)
+    {
+        printf("%d ", root->val);
     }
-    else if (root->varname!=NULL){
-        printf("%c ",*(root->varname));
+    else if (root->varname != NULL)
+    {
+        printf("%c ", *(root->varname));
     }
     preorder(root->left);
     preorder(root->right);
     return;
 }
 
-void postorder(struct tnode* root){
-    if(root==NULL)return;
+void postorder(struct tnode *root)
+{
+    if (root == NULL)
+        return;
     postorder(root->left);
     postorder(root->right);
-    if(root->op!=NULL){
-        printf("%c ",*root->op);
-    }else{
-        printf("%d ",root->val);
+    if (root->op != NULL)
+    {
+        printf("%c ", *root->op);
+    }
+    else
+    {
+        printf("%d ", root->val);
     }
     return;
 }

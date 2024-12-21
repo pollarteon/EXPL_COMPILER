@@ -6,6 +6,7 @@
  #include "code_gen.h"
  #include "code_gen.c"
  int yylex(void);
+ extern FILE* yyin;
 %}
 
 %union{
@@ -28,6 +29,7 @@ program : PBEGIN Slist END ';'{
     preorder($2);
     printf("\n\n");
     int result_reg =code_gen($2,target_file);
+    evaluator($2);
     // store_stack(result_reg,target_file);
     exit(1);
    }
@@ -62,6 +64,8 @@ yyerror(char const *s)
 
 
 int main(void) {
+ FILE* input_file = fopen("input.txt","r");
+  yyin = input_file;
  yyparse();
 
  return 0;

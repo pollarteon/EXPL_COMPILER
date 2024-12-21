@@ -148,23 +148,90 @@ int code_gen(struct tnode *t, FILE *target_file)
     return -1;
 }
 
-void store_stack(int reg_num, FILE *target_file)
-{
-    int reg1 = getReg();
-    fprintf(target_file, "MOV [4096], R%d\n", reg_num); // storing in  stack region [4096]
-    fprintf(target_file, "MOV SP, 4096\n");
-    fprintf(target_file, "MOV R%d, \"Write\"\n", reg1);
-    fprintf(target_file, "PUSH R%d\n", reg1);
-    fprintf(target_file, "MOV R%d, -2\n", reg1);
-    fprintf(target_file, "PUSH R%d\n", reg1);
-    fprintf(target_file, "PUSH R%d\n", reg_num);
-    fprintf(target_file, "PUSH R1\n");
-    fprintf(target_file, "PUSH R1\n");
-    fprintf(target_file, "CALL 0\n");
-    fprintf(target_file, "POP R0\n");
-    fprintf(target_file, "POP R1\n");
-    fprintf(target_file, "POP R1\n");
-    fprintf(target_file, "POP R1\n");
-    fprintf(target_file, "POP R1\n");
-    return;
+int stack_storage[26] = {0};
+
+int evaluator(struct tnode* t){
+    if (t == NULL)
+        return -1;
+    if (t->nodetype == READ_NODE)
+    {
+        char variable = *(t->left->varname);
+        scanf("%d",&stack_storage[variable-'a']);
+        return -1;
+    }
+    else if (t->nodetype == WRITE_NODE)
+    {
+        printf("%d\n",evaluator(t->left));
+        return -1;
+    }
+    else if(t->nodetype==CONST_NODE){
+        return t->val;
+    }
+    else if(t->nodetype==IDENTIFIER_NODE){
+        char identifer = *(t->varname);
+        return stack_storage[identifer-'a'];
+    }
+    else if (t->nodetype == OPERATOR_NODE)
+    { 
+       //if node is assignment operator
+       if(*(t->op)=='='){
+            int result_val = evaluator(t->right);
+            char identifer = *(t->left->varname);
+            stack_storage[identifer-'a'] = result_val;
+            return -1;
+       }
+       
+        int left_val = evaluator(t->left);
+        int right_val =evaluator(t->right);
+        int expression_val ;
+        switch (*(t->op))
+        {
+        case '+':
+            expression_val = left_val+right_val;
+            break;
+        case '-':
+            expression_val = left_val-right_val;
+            break;
+        case '*':
+            expression_val = left_val*right_val;
+            break;
+        case '/':
+            expression_val = left_val/right_val;
+            break;
+        default:
+            break;
+        }
+        return expression_val;
+    }else{
+        evaluator(t->left);
+        evaluator(t->right);
+        return -1;
+    }
+    
+
+    return -1;
 }
+
+
+// STAGE 1 EXERCISE 
+
+// void store_stack(int reg_num, FILE *target_file)
+// {
+//     int reg1 = getReg();
+//     fprintf(target_file, "MOV [4096], R%d\n", reg_num); // storing in  stack region [4096]
+//     fprintf(target_file, "MOV SP, 4096\n");
+//     fprintf(target_file, "MOV R%d, \"Write\"\n", reg1);
+//     fprintf(target_file, "PUSH R%d\n", reg1);
+//     fprintf(target_file, "MOV R%d, -2\n", reg1);
+//     fprintf(target_file, "PUSH R%d\n", reg1);
+//     fprintf(target_file, "PUSH R%d\n", reg_num);
+//     fprintf(target_file, "PUSH R1\n");
+//     fprintf(target_file, "PUSH R1\n");
+//     fprintf(target_file, "CALL 0\n");
+//     fprintf(target_file, "POP R0\n");
+//     fprintf(target_file, "POP R1\n");
+//     fprintf(target_file, "POP R1\n");
+//     fprintf(target_file, "POP R1\n");
+//     fprintf(target_file, "POP R1\n");
+//     return;
+// }
