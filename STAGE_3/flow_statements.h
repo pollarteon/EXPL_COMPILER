@@ -11,6 +11,9 @@
 #define IF_NODE 11
 #define ELSE_NODE 12
 #define WHILE_NODE 13
+#define BREAK_NODE 14
+#define CONTINUE_NODE 15
+#define DO_WHILE_NODE 16
 
 
 

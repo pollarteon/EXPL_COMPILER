@@ -74,7 +74,7 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
             exit(1);
         }
     }
-    else if (temp->nodetype == IF_NODE || temp->nodetype == WHILE_NODE)
+    else if (temp->nodetype == IF_NODE || temp->nodetype == WHILE_NODE || temp->nodetype==DO_WHILE_NODE)
     {
         if (l->type != BOOLEAN_TYPE)
         {
@@ -266,6 +266,15 @@ void preorder(struct tnode *root)
     else if (root->nodetype == WHILE_NODE)
     {
         printf("while ");
+    }
+    else if(root->nodetype==BREAK_NODE){
+        printf("break ");
+    }
+    else if(root->nodetype==CONTINUE_NODE){
+        printf("continue ");
+    }
+    else if(root->nodetype==DO_WHILE_NODE){
+        printf("do-while ");
     }
     else if (root->val != -1)
     {

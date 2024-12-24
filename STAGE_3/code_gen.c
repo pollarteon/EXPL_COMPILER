@@ -5,6 +5,7 @@
 int register_num = -1;
 int label_num =-1;
 
+
 int getReg()
 {
     register_num++;
@@ -31,6 +32,49 @@ int getLabel(){
     label_num++;
     return label_num;
 }
+
+// for break and continue Label Tracking ................
+
+LabelStack* label_stack = NULL;
+
+LabelStack* push_LabelStack(LabelStack* s,int break_label,int continue_label){
+    if(s==NULL){
+        LabelStack* new_entry = (LabelStack*)malloc(sizeof(LabelStack));
+        new_entry->break_label=break_label;
+        new_entry->continue_label=continue_label;
+        new_entry->next=NULL;
+        new_entry->top=new_entry;
+        return new_entry;
+    }
+    while(s->next!=NULL){
+        s=s->next;
+    }
+    LabelStack* new_entry = (LabelStack*)malloc(sizeof(LabelStack));
+    new_entry->break_label=break_label;
+    new_entry->continue_label=continue_label;
+    new_entry->next=NULL;
+    s->next=new_entry;
+    s->top=new_entry;
+    return s;
+}
+
+LabelStack* pop_LabelStack(LabelStack* s){
+    if(s==NULL)return NULL;
+    if(s->next==NULL)return NULL;
+    LabelStack* temp =s;
+    while(temp->next->next!=NULL){
+        temp=temp->next;
+    }
+    temp->next=NULL;
+    s->top =temp;
+    return s;
+}
+
+//.........................................................
+
+
+
+
 
 void read_code_gen(struct tnode *t, FILE *target_file)
 {
@@ -105,6 +149,7 @@ void if_code_gen(struct tnode* t,FILE* target_file){
 void while_code_gen(struct tnode* t,FILE* target_file){
     int loop_label = getLabel();
     int exit_label = getLabel();
+    label_stack =  push_LabelStack(label_stack,exit_label,loop_label);
     fprintf(target_file,"L%d:\n",loop_label);
     int guard_reg = code_gen(t->left,target_file);    
     fprintf(target_file,"JZ R%d, L%d\n",guard_reg,exit_label);
@@ -112,6 +157,22 @@ void while_code_gen(struct tnode* t,FILE* target_file){
     code_gen(t->right,target_file);
     fprintf(target_file,"JMP L%d\n",loop_label);
     fprintf(target_file,"L%d:\n",exit_label);
+    pop_LabelStack(label_stack);
+    return;
+}
+
+void do_while_code_gen(struct tnode* t,FILE* target_file){
+    int loop_label = getLabel();
+    int exit_label = getLabel();
+    label_stack = push_LabelStack(label_stack,exit_label,loop_label);
+    fprintf(target_file,"L%d:\n",loop_label);
+    code_gen(t->right,target_file);
+    int guard_reg = code_gen(t->left,target_file);
+    fprintf(target_file,"JZ R%d, L%d\n",guard_reg,exit_label);
+    freeReg();
+    fprintf(target_file,"JMP L%d\n",loop_label);
+    fprintf(target_file,"L%d:\n",exit_label);
+    pop_LabelStack(label_stack);
     return;
 }
 
@@ -152,6 +213,18 @@ int code_gen(struct tnode *t, FILE *target_file)
         while_code_gen(t,target_file);
         return -1;
     }
+    else if(t->nodetype==DO_WHILE_NODE){
+        do_while_code_gen(t,target_file);
+        return -1;
+    }
+    else if(t->nodetype==BREAK_NODE){
+        fprintf(target_file,"JMP L%d\n",label_stack->top->break_label);
+        return -1;
+    }
+    else if(t->nodetype==CONTINUE_NODE){
+        fprintf(target_file,"JMP L%d\n",label_stack->top->continue_label);
+        return -1;
+    }
     else if (t->nodetype == OPERATOR_NODE)
     { 
        //if node is assignment operator
@@ -162,9 +235,7 @@ int code_gen(struct tnode *t, FILE *target_file)
             fprintf(target_file,"MOV [%d], R%d\n",storage_location,reg2);
             freeReg();
             return -1;
-       }
-       
-       
+       }    
         // node is a arithmetic operator node or logical operator node
 
         int reg1 = code_gen(t->left, target_file);

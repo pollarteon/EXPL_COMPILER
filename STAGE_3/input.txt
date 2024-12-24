@@ -1,9 +1,29 @@
 begin
-    s=0;
     read(a);
-    while(a!=0)do
-        s = s+a;
-        read(a);
+    read(b);
+    i=1;
+    j=1;
+    while(i<=a)do
+        while(j<=b)do
+            write(i);
+            write(j);
+            write(0);
+            j=j+1;
+            read(k);
+            if(k==1)then
+                continue;
+            else
+                if(k==0)then
+                    break;
+                endif;
+            endif;
+        endwhile;
+        i=i+1;
+        j=1;
     endwhile;
-    write(s);
+    write(0); 
+    
+    //NOTE :: delete the following to run code without syntax errors(comments not added yet)..
+    //write(0) is written instead of return to avoid infinite loop due to last instruction being JMP
+
 end;
