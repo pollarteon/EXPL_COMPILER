@@ -27,6 +27,8 @@
 "while" {return WHILE;}
 "do" {return DO;}
 "endwhile" {return ENDWHILE;}
+"break" {return BREAK;}
+"continue" {return CONTINUE;}
 "<" {return LT;}
 ">" {return GT;}
 "<=" {return LTE;}
@@ -44,7 +46,7 @@
 [ \t] {}
 [()] {return *yytext;}
 [\n] {}
-. {yyerror("unknown character\n");exit(1);}
+. {printf("%s ",yytext); yyerror("unknown character\n");exit(1);}
 
 %%
 

@@ -35,4 +35,5 @@ struct tnode* makeIDNode(char* varname);
 struct tnode* makeOperatorNode(char c,struct tnode *l,struct tnode *r);
 
 /*To evaluate an expression tree*/
-int evaluate(struct tnode *t);
+extern int stack_storage[26]; 
+int evaluator(struct tnode *t);

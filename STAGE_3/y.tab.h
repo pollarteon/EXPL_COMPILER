@@ -78,7 +78,9 @@ extern int yydebug;
     GTE = 279,                     /* GTE  */
     EQUALS = 280,                  /* EQUALS  */
     NOTEQUALS = 281,               /* NOTEQUALS  */
-    DO = 282                       /* DO  */
+    DO = 282,                      /* DO  */
+    BREAK = 283,                   /* BREAK  */
+    CONTINUE = 284                 /* CONTINUE  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -112,6 +114,8 @@ extern int yydebug;
 #define EQUALS 280
 #define NOTEQUALS 281
 #define DO 282
+#define BREAK 283
+#define CONTINUE 284
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
@@ -122,7 +126,7 @@ union YYSTYPE
  struct tnode *no;
 
 
-#line 126 "y.tab.h"
+#line 130 "y.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

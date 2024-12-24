@@ -46,7 +46,7 @@ struct tnode *makeIDNode(char *varName)
     return temp;
 }
 
-struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, char* op)
+struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, char *op)
 {
     struct tnode *temp;
     temp = (struct tnode *)malloc(sizeof(struct tnode));
@@ -54,23 +54,30 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
     temp->nodetype = nodeType;
     temp->type = -1;
     temp->varname = NULL;
-    temp->op=NULL;
+    temp->op = NULL;
     if (temp->nodetype == OPERATOR_NODE)
     {
-      
+
         temp->op = op;
-        if(strcmp(op,"+")==0 || strcmp(op,"-")==0 || strcmp(op,"/")==0 || strcmp(op,"*")==0){
-            temp->type=INTEGER_TYPE;
-        }else{
-            temp->type=BOOLEAN_TYPE;
+        if (strcmp(op, "+") == 0 || strcmp(op, "-") == 0 || strcmp(op, "/") == 0 || strcmp(op, "*") == 0)
+        {
+            temp->type = INTEGER_TYPE;
         }
-        if(l->type!=r->type){
+        else
+        {
+            temp->type = BOOLEAN_TYPE;
+        }
+        if (l->type != r->type)
+        {
+            printf("%d %d\n",l->type,r->type);
             printf("TYPE ERROR:\n");
             exit(1);
         }
     }
-    else if(temp->nodetype==IF_NODE || temp->nodetype==WHILE_NODE){
-        if(l->type!=BOOLEAN_TYPE){
+    else if (temp->nodetype == IF_NODE || temp->nodetype == WHILE_NODE)
+    {
+        if (l->type != BOOLEAN_TYPE)
+        {
             printf("TYPE ERROR IN CONDITION : \n");
             exit(1);
         }
@@ -80,31 +87,152 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
     return temp;
 }
 
-// int evaluate(struct tnode *t)
-// {
-//     if (t->op == NULL)
-//     {
-//         return t->val;
-//     }
-//     else
-//     {
-//         switch (*(t->op))
-//         {
-//         case '+':
-//             return evaluate(t->left) + evaluate(t->right);
-//             break;
-//         case '-':
-//             return evaluate(t->left) - evaluate(t->right);
-//             break;
-//         case '*':
-//             return evaluate(t->left) * evaluate(t->right);
-//             break;
-//         case '/':
-//             return evaluate(t->left) / evaluate(t->right);
-//             break;
-//         }
-//     }
-// }
+
+//evaluator implementation  .....
+
+int stack_storage[26] = {0};
+
+int evaluator(struct tnode *t)
+{
+    if (t == NULL)
+        return -1;
+    if (t->nodetype == READ_NODE)
+    {
+        char variable = *(t->left->varname);
+        scanf("%d", &stack_storage[variable - 'a']);
+        return -1;
+    }
+    else if (t->nodetype == WRITE_NODE)
+    {
+        printf("%d\n", evaluator(t->left));
+        return -1;
+    }
+    else if (t->nodetype == CONST_NODE)
+    {
+        return t->val;
+    }
+    else if (t->nodetype == IDENTIFIER_NODE)
+    {
+        char identifer = *(t->varname);
+        // printf("%d\n\n",identifer);
+        return stack_storage[identifer - 'a'];
+    }
+    else if (t->nodetype == IF_NODE)
+    {
+        if (evaluator(t->left))
+        {
+            if (t->right->nodetype == ELSE_NODE)
+            {
+                evaluator(t->right->left);
+                return -1;
+            }
+            else
+            {
+                evaluator(t->right);
+                return -1;
+            }
+        }
+        else
+        {
+            if (t->right->nodetype == ELSE_NODE)
+            {
+                evaluator(t->right->right);
+                return -1;
+            }
+            else
+            {
+                return -1;
+            }
+        }
+    }
+    else if(t->nodetype == WHILE_NODE){
+        if(evaluator(t->left)){
+            evaluator(t->right);
+            evaluator(t);
+            return -1;
+        }else{
+            return -1;
+        }
+    }
+    else if (t->nodetype == OPERATOR_NODE)
+    {
+        // if node is assignment operator
+        if (strcmp(t->op, "=") == 0)
+        {
+            int result_val = evaluator(t->right);
+            char identifer = *(t->left->varname);
+            stack_storage[identifer - 'a'] = result_val;
+            return -1;
+        }
+
+        int left_val = evaluator(t->left);
+        int right_val = evaluator(t->right);
+        int expression_val;
+        if (strcmp(t->op, "+") == 0)
+        {
+            expression_val = left_val + right_val;
+        }
+        else if (strcmp(t->op, "-") == 0)
+        {
+            expression_val = left_val - right_val;
+        }
+        else if (strcmp(t->op, "*") == 0)
+        {
+            expression_val = left_val * right_val;
+        }
+        else if (strcmp(t->op, "/") == 0)
+        {
+            expression_val = left_val / right_val;
+        }
+        else if (strcmp(t->op, "<") == 0)
+        {
+            return (left_val < right_val) ? 1 : 0;
+        }
+        else if (strcmp(t->op, ">") == 0)
+        {
+            return (left_val > right_val) ? 1 : 0;
+        }
+        else if (strcmp(t->op, ">=") == 0)
+        {
+            return (left_val >= right_val) ? 1 : 0;
+        }
+        else if (strcmp(t->op, "<=") == 0)
+        {
+            return (left_val <= right_val) ? 1 : 0;
+        }
+        else if (strcmp(t->op, "&&") == 0)
+        {
+            return (left_val && right_val) ? 1 : 0;
+        }
+        else if (strcmp(t->op, "||") == 0)
+        {
+            return (left_val || right_val) ? 1 : 0;
+        }
+        else if (strcmp(t->op, "==") == 0)
+        {
+            return (left_val == right_val) ? 1 : 0;
+        }
+        else if (strcmp(t->op, "!=") == 0)
+        {
+            return (left_val != right_val) ? 1 : 0;
+        }
+        else
+        {
+            // Handle unknown operator error or add default behavior
+            printf("Unknown operator: %s\n", t->op);
+            exit(1);
+        }
+        return expression_val;
+    }
+    else
+    {
+        evaluator(t->left);
+        evaluator(t->right);
+        return -1;
+    }
+
+    return -1;
+}
 
 void preorder(struct tnode *root)
 {
@@ -127,13 +255,16 @@ void preorder(struct tnode *root)
     {
         printf("write ");
     }
-    else if(root->nodetype == IF_NODE){
+    else if (root->nodetype == IF_NODE)
+    {
         printf("if ");
     }
-    else if(root->nodetype == ELSE_NODE){
+    else if (root->nodetype == ELSE_NODE)
+    {
         printf("else ");
     }
-    else if (root->nodetype==WHILE_NODE){
+    else if (root->nodetype == WHILE_NODE)
+    {
         printf("while ");
     }
     else if (root->val != -1)

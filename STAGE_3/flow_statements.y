@@ -15,9 +15,14 @@
 
 }
 %type <no> expr NUM program END ID Slist Stmt InputStmt OutputStmt AsgStmt WhileStmt Ifstmt
-%token NUM PLUS MINUS MUL DIV END PBEGIN READ WRITE ID IF ELSE THEN ENDIF ENDWHILE WHILE OR AND LT GT LTE GTE EQUALS NOTEQUALS DO
+%token NUM PLUS MINUS MUL DIV END PBEGIN READ WRITE ID IF ELSE THEN ENDIF ENDWHILE WHILE OR AND LT GT LTE GTE EQUALS NOTEQUALS DO BREAK CONTINUE
+%left OR
+%left AND
+%left EQUALS NOTEQUALS
+%left LT LTE GT GTE
 %left PLUS MINUS
 %left MUL DIV
+
 
 %%
 
@@ -29,6 +34,7 @@ program : PBEGIN Slist END ';'{
     printf("Preorder of Syntax Tree : ");
     preorder($2);
     printf("\n\n");
+    // evaluator($2);
     int result_reg =code_gen($2,target_file);
     // store_stack(result_reg,target_file);
     exit(1);
@@ -72,6 +78,8 @@ expr : expr PLUS expr  {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"+");}
   | expr GTE expr {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,">=");}
   | expr EQUALS expr {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"==");}
   | expr NOTEQUALS expr {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"!=");}
+  | expr AND expr {$$=makeNonLeafNode($1,$3,OPERATOR_NODE,"&&");}
+  | expr OR expr {$$=makeNonLeafNode($1,$3,OPERATOR_NODE,"||");}
   | '(' expr ')'  {$$ = $2;}
   | NUM   {$$ = $1;}
   | ID {$$ = $1;}

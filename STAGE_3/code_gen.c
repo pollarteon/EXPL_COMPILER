@@ -1,7 +1,9 @@
 // #include <stdio.h>
-// #include "exprtree.h"
+// #include "flow_statements.h"
+// #include <string.h>
 
-register_num = -1;
+int register_num = -1;
+int label_num =-1;
 
 int getReg()
 {
@@ -22,8 +24,12 @@ void freeReg()
     }
     else
     {
-        printf("Error: free a register Below 0\n");
+        printf("Error: No need of Freeing\n");
     }
+}
+int getLabel(){
+    label_num++;
+    return label_num;
 }
 
 void read_code_gen(struct tnode *t, FILE *target_file)
@@ -71,9 +77,45 @@ void write_code_gen(struct tnode* t,FILE* target_file){
     fprintf(target_file, "POP R1\n");
     fprintf(target_file, "POP R1\n");
     fprintf(target_file, "POP R1\n");
-
+    freeReg();
     return;
 }
+
+void if_code_gen(struct tnode* t,FILE* target_file){
+    int label1 = getLabel();
+    
+    //generating code for guard expression....
+    int gaurd_reg = code_gen(t->left,target_file);
+    fprintf(target_file,"JZ R%d, L%d\n",gaurd_reg,label1);
+    freeReg();
+    if(t->right->nodetype==ELSE_NODE){
+        int label2 = getLabel();
+        code_gen(t->right->left,target_file);
+        fprintf(target_file,"JMP L%d\n",label2);
+        fprintf(target_file,"L%d:\n",label1);
+        code_gen(t->right->right,target_file);
+        fprintf(target_file,"L%d:\n",label2);
+    }else{
+        code_gen(t->right,target_file);
+        fprintf(target_file,"L%d:\n",label1);
+    }
+    return;
+}
+
+void while_code_gen(struct tnode* t,FILE* target_file){
+    int loop_label = getLabel();
+    int exit_label = getLabel();
+    fprintf(target_file,"L%d:\n",loop_label);
+    int guard_reg = code_gen(t->left,target_file);    
+    fprintf(target_file,"JZ R%d, L%d\n",guard_reg,exit_label);
+    freeReg();
+    code_gen(t->right,target_file);
+    fprintf(target_file,"JMP L%d\n",loop_label);
+    fprintf(target_file,"L%d:\n",exit_label);
+    return;
+}
+
+
 
 
 int code_gen(struct tnode *t, FILE *target_file)
@@ -102,10 +144,18 @@ int code_gen(struct tnode *t, FILE *target_file)
         fprintf(target_file,"MOV R%d, [%d]\n",reg_num,storage_location);
         return reg_num;
     }
+    else if(t->nodetype==IF_NODE){
+        if_code_gen(t,target_file);
+        return -1;
+    }
+    else if(t->nodetype==WHILE_NODE){
+        while_code_gen(t,target_file);
+        return -1;
+    }
     else if (t->nodetype == OPERATOR_NODE)
     { 
        //if node is assignment operator
-       if(*(t->op)=='='){
+       if(strcmp(t->op,"=")==0){
             int reg2 = code_gen(t->right,target_file);
             char identifer = *(t->left->varname);
             int storage_location = 4096+(identifer-'a');
@@ -115,27 +165,22 @@ int code_gen(struct tnode *t, FILE *target_file)
        }
        
        
-        // node is a arithmetic operator node
+        // node is a arithmetic operator node or logical operator node
 
         int reg1 = code_gen(t->left, target_file);
         int reg2 = code_gen(t->right, target_file);
-        switch (*(t->op))
-        {
-        case '+':
-            fprintf(target_file, "ADD R%d, R%d\n", reg1, reg2);
-            break;
-        case '-':
-            fprintf(target_file, "SUB R%d, R%d\n", reg1, reg2);
-            break;
-        case '*':
-            fprintf(target_file, "MUL R%d, R%d\n", reg1, reg2);
-            break;
-        case '/':
-            fprintf(target_file, "DIV R%d, R%d\n", reg1, reg2);
-            break;
-        default:
-            break;
-        }
+        if(strcmp(t->op,"+")==0) fprintf(target_file,"ADD R%d, R%d\n",reg1,reg2);
+        else if (strcmp(t->op,"-")==0) fprintf(target_file,"SUB R%d, R%d\n",reg1,reg2);
+        else if (strcmp(t->op,"*")==0) fprintf(target_file,"MUL R%d, R%d\n",reg1,reg2);
+        else if (strcmp(t->op,"/")==0) fprintf(target_file,"DIV R%d, R%d\n",reg1,reg2);
+        else if (strcmp(t->op,"<")==0) fprintf(target_file,"LT R%d, R%d\n",reg1,reg2);
+        else if (strcmp(t->op,"<=")==0) fprintf(target_file,"LE R%d, R%d\n",reg1,reg2);
+        else if (strcmp(t->op,">")==0) fprintf(target_file,"GT R%d, R%d\n",reg1,reg2);
+        else if (strcmp(t->op,">=")==0) fprintf(target_file,"GE R%d, R%d\n",reg1,reg2);
+        else if (strcmp(t->op,"==")==0) fprintf(target_file,"EQ R%d, R%d\n",reg1,reg2);
+        else if (strcmp(t->op,"!=")==0) fprintf(target_file,"NE R%d, R%d\n",reg1,reg2);
+        else if (strcmp(t->op,"&&")==0) fprintf(target_file,"AND R%d, R%d\n",reg1,reg2);// check later
+        else if (strcmp(t->op,"||")==0) fprintf(target_file,"OR R%d, R%d\n",reg1,reg2);//check later
         freeReg();
         return reg1;
     }else{
@@ -147,6 +192,8 @@ int code_gen(struct tnode *t, FILE *target_file)
 
     return -1;
 }
+
+
 
 // STAGE 1 EXERCISE 
 
