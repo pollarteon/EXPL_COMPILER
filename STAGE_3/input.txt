@@ -1,6 +1,8 @@
 begin
     read(a);
     read(b);
+    write(a);
+    write(b);
     i=1;
     j=1;
     while(i<=a)do
@@ -23,7 +25,6 @@ begin
     endwhile;
     write(0); 
     
-    //NOTE :: delete the following to run code without syntax errors(comments not added yet)..
-    //write(0) is written instead of return to avoid infinite loop due to last instruction being JMP
+   
 
 end;

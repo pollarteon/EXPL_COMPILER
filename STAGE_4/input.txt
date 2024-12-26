@@ -1,0 +1,22 @@
+begin
+    decl
+     int num1,num2,sum,num3;
+     str hello;
+    enddecl;
+    read(num1);
+    sum = num1;
+    if(num1==0)then
+        write(0);
+    else
+        while(num1!=0)do
+            read(num1);
+            if(num1==0)then
+                break;
+            endif;
+            sum=sum+num1;
+        endwhile;
+    endif;
+    write(sum);
+    write(sum-3);
+    write(num3);
+end;

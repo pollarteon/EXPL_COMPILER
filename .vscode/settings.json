@@ -2,6 +2,7 @@
     "C_Cpp.errorSquiggles": "disabled",
     "files.associations": {
         "cstdlib": "c",
-        "flow_statements.h": "c"
+        "flow_statements.h": "c",
+        "typeinfo": "c"
     }
 }
