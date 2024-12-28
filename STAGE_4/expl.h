@@ -15,6 +15,7 @@
 #define CONTINUE_NODE 15
 #define DO_WHILE_NODE 16
 #define STRING_TYPE 17
+#define ARRAY_NODE 18
 
 
 
@@ -22,8 +23,10 @@ typedef struct Gsymbol
 {
     char *name;  // name of the variable
     int type;    // type of the variable
-    int size;    // size of the type of the variable
+    int size;    // size of the variable
     int binding; // stores the static memory address allocated to the variable
+    int row;     // for 1D arrays and 2D arrays
+    int col;     // for 2D arrays
     struct Gsymbol *next;
 }Gsymbol;
 
@@ -34,6 +37,9 @@ typedef struct tnode
     char *varname;              // for ID nodes(initialisation)
     int nodetype;               // info aboout non leaf Nodes
     char *op;                   // indicates the opertor
+    int size;                   //size of variable
+    int row;                    //row for 1D /2D ARRAYS
+    int col;                    //col for 2D Arrays
     struct Gsymbol* Gentry;
     struct tnode *left, *right; // left and right branches
 } tnode;
@@ -43,11 +49,11 @@ extern int binding_pos;
 
 struct Gsymbol* LookUp(char* varName);
 
-void G_Install(char* name,int type,int size);
+void G_Install(char* name,int type,int row,int col);
 
 void print_GSymbolTable();
 
-struct tnode *createNode(int val, int type, char *c, char *varname, int nodeType, tnode *l, tnode *r);
+struct tnode *createNode(int val,int row,int col, int type, char *c, char *varname, int nodeType, tnode *l, tnode *r);
 
 struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, char *op);
 

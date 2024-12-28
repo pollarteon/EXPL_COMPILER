@@ -59,32 +59,33 @@ extern int yydebug;
     MINUS = 260,                   /* MINUS  */
     MUL = 261,                     /* MUL  */
     DIV = 262,                     /* DIV  */
-    END = 263,                     /* END  */
-    PBEGIN = 264,                  /* PBEGIN  */
-    READ = 265,                    /* READ  */
-    WRITE = 266,                   /* WRITE  */
-    ID = 267,                      /* ID  */
-    IF = 268,                      /* IF  */
-    ELSE = 269,                    /* ELSE  */
-    THEN = 270,                    /* THEN  */
-    ENDIF = 271,                   /* ENDIF  */
-    ENDWHILE = 272,                /* ENDWHILE  */
-    WHILE = 273,                   /* WHILE  */
-    OR = 274,                      /* OR  */
-    AND = 275,                     /* AND  */
-    LT = 276,                      /* LT  */
-    GT = 277,                      /* GT  */
-    LTE = 278,                     /* LTE  */
-    GTE = 279,                     /* GTE  */
-    EQUALS = 280,                  /* EQUALS  */
-    NOTEQUALS = 281,               /* NOTEQUALS  */
-    DO = 282,                      /* DO  */
-    BREAK = 283,                   /* BREAK  */
-    CONTINUE = 284,                /* CONTINUE  */
-    DECL = 285,                    /* DECL  */
-    ENDDECL = 286,                 /* ENDDECL  */
-    INT = 287,                     /* INT  */
-    STR = 288                      /* STR  */
+    MOD = 263,                     /* MOD  */
+    END = 264,                     /* END  */
+    PBEGIN = 265,                  /* PBEGIN  */
+    READ = 266,                    /* READ  */
+    WRITE = 267,                   /* WRITE  */
+    ID = 268,                      /* ID  */
+    IF = 269,                      /* IF  */
+    ELSE = 270,                    /* ELSE  */
+    THEN = 271,                    /* THEN  */
+    ENDIF = 272,                   /* ENDIF  */
+    ENDWHILE = 273,                /* ENDWHILE  */
+    WHILE = 274,                   /* WHILE  */
+    OR = 275,                      /* OR  */
+    AND = 276,                     /* AND  */
+    LT = 277,                      /* LT  */
+    GT = 278,                      /* GT  */
+    LTE = 279,                     /* LTE  */
+    GTE = 280,                     /* GTE  */
+    EQUALS = 281,                  /* EQUALS  */
+    NOTEQUALS = 282,               /* NOTEQUALS  */
+    DO = 283,                      /* DO  */
+    BREAK = 284,                   /* BREAK  */
+    CONTINUE = 285,                /* CONTINUE  */
+    DECL = 286,                    /* DECL  */
+    ENDDECL = 287,                 /* ENDDECL  */
+    INT = 288,                     /* INT  */
+    STR = 289                      /* STR  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -98,32 +99,33 @@ extern int yydebug;
 #define MINUS 260
 #define MUL 261
 #define DIV 262
-#define END 263
-#define PBEGIN 264
-#define READ 265
-#define WRITE 266
-#define ID 267
-#define IF 268
-#define ELSE 269
-#define THEN 270
-#define ENDIF 271
-#define ENDWHILE 272
-#define WHILE 273
-#define OR 274
-#define AND 275
-#define LT 276
-#define GT 277
-#define LTE 278
-#define GTE 279
-#define EQUALS 280
-#define NOTEQUALS 281
-#define DO 282
-#define BREAK 283
-#define CONTINUE 284
-#define DECL 285
-#define ENDDECL 286
-#define INT 287
-#define STR 288
+#define MOD 263
+#define END 264
+#define PBEGIN 265
+#define READ 266
+#define WRITE 267
+#define ID 268
+#define IF 269
+#define ELSE 270
+#define THEN 271
+#define ENDIF 272
+#define ENDWHILE 273
+#define WHILE 274
+#define OR 275
+#define AND 276
+#define LT 277
+#define GT 278
+#define LTE 279
+#define GTE 280
+#define EQUALS 281
+#define NOTEQUALS 282
+#define DO 283
+#define BREAK 284
+#define CONTINUE 285
+#define DECL 286
+#define ENDDECL 287
+#define INT 288
+#define STR 289
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
@@ -131,10 +133,10 @@ union YYSTYPE
 {
 #line 13 "expl.y"
 
- struct tnode *no;
- int var_type;
+  struct tnode *no;
+  int integer;
 
-#line 138 "y.tab.h"
+#line 140 "y.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

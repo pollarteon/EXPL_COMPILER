@@ -72,22 +72,48 @@ LabelStack* pop_LabelStack(LabelStack* s){
 
 //.........................................................
 
-
-
+//various keyword code -gen functions
+int array_code_gen(struct tnode* t,FILE* target_file){
+    int index_reg;
+    index_reg = code_gen(t->right,target_file);
+    // printf("%d\n",index_reg);
+    struct Gsymbol* Gentry = t->left->Gentry;
+    int storage_location = Gentry->binding;
+    int reg_result = getReg();
+    fprintf(target_file,"MOV R%d, %d\n",reg_result,storage_location);
+    fprintf(target_file,"ADD R%d, R%d\n",reg_result,index_reg);
+    fprintf(target_file,"MOV R%d, [R%d]\n",reg_result,reg_result);
+    return reg_result;
+}
 
 
 void read_code_gen(struct tnode *t, FILE *target_file)
 {
+    int reg_result = getReg();
     int reg_num = getReg();
+    int storage_location;
     struct tnode *identifier_node = t->left;
-    int storageLocation = identifier_node->Gentry->binding;
+    if(identifier_node->nodetype==ARRAY_NODE){
+        int index_reg;
+        index_reg = code_gen(identifier_node->right,target_file);
+        struct Gsymbol* Gentry = identifier_node->left->Gentry;
+        int storage_location = Gentry->binding;
+        
+        fprintf(target_file,"MOV R%d, %d\n",reg_result,storage_location);
+        fprintf(target_file,"ADD R%d, R%d\n",reg_result,index_reg);
+        freeReg();
+    }
+    else{
+        storage_location = identifier_node->Gentry->binding;
+        fprintf(target_file,"MOV R%d, %d\n",reg_result,storage_location);
+    } 
     // printf("%d\n",storageLocation);
     // calling read through library
     fprintf(target_file, "MOV R%d, \"Read\"\n", reg_num);
     fprintf(target_file, "PUSH R%d\n", reg_num); // function code
     fprintf(target_file, "MOV R%d, -2\n", reg_num);
     fprintf(target_file, "PUSH R%d\n", reg_num); // file descriptor
-    fprintf(target_file, "MOV R%d, %d\n", reg_num, storageLocation);
+    fprintf(target_file, "MOV R%d, R%d\n", reg_num, reg_result);
     fprintf(target_file, "PUSH R%d\n", reg_num); // stack location for storing var
     fprintf(target_file, "PUSH R1\n");           // blank arguement
     fprintf(target_file, "PUSH R1\n");           // for return addr
@@ -98,6 +124,7 @@ void read_code_gen(struct tnode *t, FILE *target_file)
     fprintf(target_file, "POP R1\n");
     fprintf(target_file, "POP R1\n");
 
+    freeReg();
     freeReg();
     return ;
 }
@@ -120,6 +147,7 @@ void write_code_gen(struct tnode* t,FILE* target_file){
     fprintf(target_file, "POP R1\n");
     fprintf(target_file, "POP R1\n");
     fprintf(target_file, "POP R1\n");
+    freeReg();
     freeReg();
     return;
 }
@@ -224,11 +252,29 @@ int code_gen(struct tnode *t, FILE *target_file)
         fprintf(target_file,"JMP L%d\n",label_stack->top->continue_label);
         return -1;
     }
+    else if(t->nodetype==ARRAY_NODE){
+        int array_reg = array_code_gen(t,target_file);
+        return array_reg;
+    }
     else if (t->nodetype == OPERATOR_NODE)
     { 
        //if node is assignment operator
        if(strcmp(t->op,"=")==0){
             int reg2 = code_gen(t->right,target_file);
+            if(t->left->nodetype==ARRAY_NODE){
+                int index_reg;
+                index_reg = code_gen(t->left->right,target_file);
+                struct Gsymbol* Gentry = (t->left->left->Gentry);
+                int storage_location = Gentry->binding;
+                int reg_result = getReg();
+                fprintf(target_file,"MOV R%d, %d\n",reg_result,storage_location);
+                fprintf(target_file,"ADD R%d, R%d\n",reg_result,index_reg);
+                fprintf(target_file,"MOV [R%d],R%d\n",reg_result,reg2);
+                freeReg();
+                freeReg();
+                freeReg();
+                return -1;
+            } 
             int storage_location = t->left->Gentry->binding;
             // printf("%d\n",storage_location);
             fprintf(target_file,"MOV [%d], R%d\n",storage_location,reg2);
@@ -243,6 +289,7 @@ int code_gen(struct tnode *t, FILE *target_file)
         else if (strcmp(t->op,"-")==0) fprintf(target_file,"SUB R%d, R%d\n",reg1,reg2);
         else if (strcmp(t->op,"*")==0) fprintf(target_file,"MUL R%d, R%d\n",reg1,reg2);
         else if (strcmp(t->op,"/")==0) fprintf(target_file,"DIV R%d, R%d\n",reg1,reg2);
+        else if (strcmp(t->op,"%")==0) fprintf(target_file,"MOD R%d, R%d\n",reg1,reg2);
         else if (strcmp(t->op,"<")==0) fprintf(target_file,"LT R%d, R%d\n",reg1,reg2);
         else if (strcmp(t->op,"<=")==0) fprintf(target_file,"LE R%d, R%d\n",reg1,reg2);
         else if (strcmp(t->op,">")==0) fprintf(target_file,"GT R%d, R%d\n",reg1,reg2);
@@ -252,6 +299,7 @@ int code_gen(struct tnode *t, FILE *target_file)
         else if (strcmp(t->op,"&&")==0) fprintf(target_file,"AND R%d, R%d\n",reg1,reg2);// check later
         else if (strcmp(t->op,"||")==0) fprintf(target_file,"OR R%d, R%d\n",reg1,reg2);//check later
         freeReg();
+        // printf("%d\n",reg1);
         return reg1;
     }else{
         int reg1 = code_gen(t->left,target_file);

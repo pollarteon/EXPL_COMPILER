@@ -11,18 +11,18 @@
 %}
 
 %union{
- struct tnode *no;
- int var_type;
+  struct tnode *no;
+  int integer;
 }
 %type <no> expr NUM program END ID Slist Stmt InputStmt OutputStmt AsgStmt WhileStmt Ifstmt BreakStmt ContinueStmt DoWhileStmt Declarations DeclList Decl Varlist Identifier
-%type <var_type> Type
-%token NUM PLUS MINUS MUL DIV END PBEGIN READ WRITE ID IF ELSE THEN ENDIF ENDWHILE WHILE OR AND LT GT LTE GTE EQUALS NOTEQUALS DO BREAK CONTINUE DECL ENDDECL INT STR
+%type <integer> Type
+%token NUM PLUS MINUS MUL DIV MOD END PBEGIN READ WRITE ID IF ELSE THEN ENDIF ENDWHILE WHILE OR AND LT GT LTE GTE EQUALS NOTEQUALS DO BREAK CONTINUE DECL ENDDECL INT STR
 %left OR
 %left AND
 %left EQUALS NOTEQUALS
 %left LT LTE GT GTE
 %left PLUS MINUS
-%left MUL DIV
+%left MUL DIV MOD
 
 
 %%
@@ -32,7 +32,7 @@ program : PBEGIN Declarations Slist END ';'{
     // printf("reached Here\n");
     FILE* target_file = fopen("code.xsm","w");
     fprintf(target_file, "%d\n%d\n%d\n%d\n%d\n%d\n%d\n%d\n",0,2056,0,0,0,0,0,0); 
-    fprintf(target_file,"MOV SP,%d\n",binding_pos); //first 26 locations are reserved for a-z variables
+    fprintf(target_file,"MOV SP,%d\n",binding_pos); //binding pos should contain the base of the stack after declarations
     printf("Preorder of Syntax Tree : ");
     preorder($3);
     printf("\n\n");
@@ -56,21 +56,32 @@ Decl : Type Varlist ';' {
   struct tnode* varList = $2;
   while(varList!=NULL){
     if(LookUp(varList->varname)==NULL){
-      G_Install(varList->varname,declaration_type,1);
+      int row_num = varList->row;
+      int col_num = varList->col;
+      G_Install(varList->varname,declaration_type,row_num,col_num);
     }else{
       printf("ERROR: REDECLARATION OF VARIABLE: %s\n",varList->varname);
       exit(1);
     }
     varList=varList->right;
   }
-  // print_GSymbolTable();
+  print_GSymbolTable();
 };
 
 Type : INT {$$ = INTEGER_TYPE;} 
 | STR {$$ = STRING_TYPE;}
 
-Varlist : Varlist ',' ID {
-  struct tnode* IDNode = createNode(-1,-1,NULL,$3->varname,-1,NULL,NULL);
+Varlist : Varlist ',' ID '[' NUM ']' {
+  struct tnode* IDNode = createNode(-1,$5->val,1,-1,NULL,$3->varname,-1,NULL,NULL);
+  struct tnode* temp = $1;
+  while (temp->right != NULL) {  
+      temp = temp->right;
+  }
+  temp->right = IDNode;  
+  $$ = $1; 
+}
+| Varlist ',' ID {
+  struct tnode* IDNode = createNode(-1,1,-1,-1,NULL,$3->varname,-1,NULL,NULL);
   struct tnode* temp = $1;
   while (temp->right != NULL) {  
       temp = temp->right;
@@ -78,12 +89,17 @@ Varlist : Varlist ',' ID {
   temp->right = IDNode;  
   $$ = $1; 
 };
+| ID '[' NUM ']'{
+  // printf("%s\n",$1->varname);
+  $$=createNode(-1,$3->val,1,1,NULL,$1->varname,-1,NULL,NULL);
+}
 | ID {
-    $$=createNode(-1,-1,NULL,$1->varname,-1,NULL,NULL);
+  // printf("%s\n",$1->varname);
+    $$=createNode(-1,1,-1,-1,NULL,$1->varname,-1,NULL,NULL);
   };
 
 Slist : Slist Stmt {
-  $$=createNode(-1,-1,NULL,NULL,CONNECTOR_NODE,$1,$2);
+  $$=createNode(-1,1,1,-1,NULL,NULL,CONNECTOR_NODE,$1,$2);
 }
 | Stmt {$$=$1;};
 ;
@@ -129,6 +145,7 @@ expr : expr PLUS expr  {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"+");}
   | expr MINUS expr   {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"-");}
   | expr MUL expr {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"*");}
   | expr DIV expr {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"/");}
+  | expr MOD expr {$$=makeNonLeafNode($1,$3,OPERATOR_NODE,"%");}
   | expr LT expr {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"<");}
   | expr LTE expr {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"<=");}
   | expr GT expr {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,">");}
@@ -144,12 +161,31 @@ expr : expr PLUS expr  {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"+");}
 
 Identifier : ID {
   struct tnode* IDNode = $1;
-  if(LookUp(IDNode->varname)==NULL){
+  // printf("%s\n",IDNode->varname);
+  struct Gsymbol* Gentry = LookUp(IDNode->varname);
+  if(Gentry==NULL){
     printf("ERROR: UNDECLARED VARIABLE %s\n",IDNode->varname);
     exit(1);
   } 
+  else{
+    //checking if the identifier was declared as an Array
+    if(Gentry->col!=-1){
+      printf("ERROR: ACCESSING ARRAY WITHOUT INDEX %s\n",IDNode->varname);
+      exit(1);
+    }
+  }
+  IDNode->type = Gentry->type;
   $$=IDNode;
 };
+  | ID '[' NUM ']'{
+    // printf("ARRAY\n");
+    $$=makeNonLeafNode($1,$3,ARRAY_NODE,"_");
+  
+  }
+  | ID '[' Identifier ']'{
+    // printf("ARRAY WITH ID\n");
+    $$=makeNonLeafNode($1,$3,ARRAY_NODE,"_");
+  }
 
 %%
 

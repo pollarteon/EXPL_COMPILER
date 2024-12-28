@@ -40,6 +40,7 @@
 "-" {return MINUS;}
 "*" {return MUL;}
 "/" {return DIV;}
+"%" {return MOD;}
 "=" {return *yytext;}
 ";" {return *yytext;}
 "," {return *yytext;}
@@ -56,6 +57,7 @@
     }
 [ \t] {}
 [()] {return *yytext;}
+[\[\]] {return *yytext;}
 [\n] {}
 . {printf("%s ",yytext); yyerror("unknown character\n");exit(1);}
 
