@@ -44,6 +44,11 @@
 "=" {return *yytext;}
 ";" {return *yytext;}
 "," {return *yytext;}
+["][a-zA-Z0-9_ ]*["] {
+    // printf("%s\n",yytext);
+    yylval.no = createNode(-1,1,-1,STRING_TYPE,NULL,yytext,CONST_NODE,NULL,NULL);
+    return STRING;
+}
 [a-zA-Z][a-zA-Z0-9_]* {// look later
     variable = yytext;
     yylval.no = makeIDNode(variable);

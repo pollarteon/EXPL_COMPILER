@@ -81,7 +81,10 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
         {
             temp->type = INTEGER_TYPE;
             if((l->nodetype==IDENTIFIER_NODE && l->Gentry->type!=INTEGER_TYPE) 
-            || (r->nodetype==IDENTIFIER_NODE && r->Gentry->type!=INTEGER_TYPE)){
+            || (r->nodetype==IDENTIFIER_NODE && r->Gentry->type!=INTEGER_TYPE)
+            || l->type==STRING_TYPE
+            || r->type==STRING_TYPE
+            ){
                 printf("\n\nERROR:NON-INTEGER TYPE IN ARITMETIC OPERATION\n\n");
                 exit(1);
             }
@@ -93,8 +96,8 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
         if (l->type != r->type)
         {
             printf("%s\n",temp->op);
-            printf("%s\n",l->varname);
-            printf("%s\n",r->varname);
+            // printf("%s\n",l->varname);
+            // printf("%s\n",r->varname);
             printf("%d %d\n",l->type,r->type);
             printf("TYPE ERROR:\n");
             exit(1);
@@ -383,9 +386,12 @@ void preorder(struct tnode *root)
     else if(root->nodetype==ARRAY_NODE){
         printf("array ");
     }
-    else if (root->val != -1)
+    else if (root->nodetype==CONST_NODE)
     {
+        if(root->type==INTEGER_TYPE)
         printf("%d ", root->val);
+        else
+        printf("%s ",root->varname);
     }
     else if (root->nodetype==IDENTIFIER_NODE)
     {

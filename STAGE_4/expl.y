@@ -14,9 +14,9 @@
   struct tnode *no;
   int integer;
 }
-%type <no> expr NUM program END ID Slist Stmt InputStmt OutputStmt AsgStmt WhileStmt Ifstmt BreakStmt ContinueStmt DoWhileStmt Declarations DeclList Decl Varlist Identifier
+%type <no> expr NUM STRING program END ID Slist Stmt InputStmt OutputStmt AsgStmt WhileStmt Ifstmt BreakStmt ContinueStmt DoWhileStmt Declarations DeclList Decl Varlist Identifier
 %type <integer> Type
-%token NUM PLUS MINUS MUL DIV MOD END PBEGIN READ WRITE ID IF ELSE THEN ENDIF ENDWHILE WHILE OR AND LT GT LTE GTE EQUALS NOTEQUALS DO BREAK CONTINUE DECL ENDDECL INT STR
+%token NUM STRING PLUS MINUS MUL DIV MOD END PBEGIN READ WRITE ID IF ELSE THEN ENDIF ENDWHILE WHILE OR AND LT GT LTE GTE EQUALS NOTEQUALS DO BREAK CONTINUE DECL ENDDECL INT STR
 %left OR
 %left AND
 %left EQUALS NOTEQUALS
@@ -156,7 +156,9 @@ expr : expr PLUS expr  {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"+");}
   | expr OR expr {$$=makeNonLeafNode($1,$3,OPERATOR_NODE,"||");}
   | '(' expr ')'  {$$ = $2;}
   | NUM   {$$ = $1;}
+  | STRING {$$=$1;}
   | Identifier {$$=$1;}
+  
   ;
 
 Identifier : ID {

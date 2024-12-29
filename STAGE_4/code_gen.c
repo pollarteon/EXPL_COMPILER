@@ -222,7 +222,10 @@ int code_gen(struct tnode *t, FILE *target_file)
     }
     else if(t->nodetype==CONST_NODE){
         int reg_num = getReg();
+        if(t->type==INTEGER_TYPE)
         fprintf(target_file, "MOV R%d, %d\n", reg_num, t->val);
+        else
+        fprintf(target_file,"MOV R%d, %s\n",reg_num,t->varname);
         return reg_num;
     }
     else if(t->nodetype==IDENTIFIER_NODE){
