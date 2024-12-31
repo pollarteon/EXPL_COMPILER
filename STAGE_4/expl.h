@@ -16,6 +16,7 @@
 #define DO_WHILE_NODE 16
 #define STRING_TYPE 17
 #define ARRAY_NODE 18
+#define _2D_ARRAY_NODE 19
 
 
 

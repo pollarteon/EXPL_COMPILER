@@ -1,23 +1,21 @@
 begin
    decl
-    int n,i,j;
+    int a[3][3];
+    int i,j,s;
 enddecl;
-    read(n);
+    s=0;
+    i=0;
     j=0;
-    if(n%2==0) then
-        j=1;
-    else
-        i=3;
-        while(i<=n/2) do
-            if(n%i==0) then
-                j=1;
-            endif;
-            i=i+2;
+    while(i<3)do
+        while(j<3)do
+            read(a[i][j]);
+            s = a[i][j]+s;
+            j=j+1;
         endwhile;
-    endif;
-    if(j==0) then
-        write("Prime");
-    else 
-        write("Not Prime");
-    endif;
+        j=0;
+        i=i+1;
+    endwhile;
+    write(a[0][0]);
+    write(a[1][1]);
+    write(a[2][2]);
 end;

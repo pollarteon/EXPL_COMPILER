@@ -74,16 +74,37 @@ LabelStack* pop_LabelStack(LabelStack* s){
 
 //various keyword code -gen functions
 int array_code_gen(struct tnode* t,FILE* target_file){
-    int index_reg;
-    index_reg = code_gen(t->right,target_file);
-    // printf("%d\n",index_reg);
     struct Gsymbol* Gentry = t->left->Gentry;
-    int storage_location = Gentry->binding;
-    int reg_result = getReg();
-    fprintf(target_file,"MOV R%d, %d\n",reg_result,storage_location);
-    fprintf(target_file,"ADD R%d, R%d\n",reg_result,index_reg);
-    fprintf(target_file,"MOV R%d, [R%d]\n",reg_result,reg_result);
-    return reg_result;
+    if(t->right->nodetype!=_2D_ARRAY_NODE){
+        int index_reg;
+        int reg_result = getReg();
+        index_reg = code_gen(t->right,target_file);
+        // printf("%d\n",index_reg);
+        
+        int storage_location = Gentry->binding;
+        fprintf(target_file,"MOV R%d, %d\n",reg_result,storage_location);
+        fprintf(target_file,"ADD R%d, R%d\n",reg_result,index_reg);
+        fprintf(target_file,"MOV R%d, [R%d]\n",reg_result,reg_result);
+        freeReg(); //for freeing index_reg;
+        return reg_result;
+    }else{
+        int reg_result = getReg();
+        int row_index_reg = code_gen(t->right->left,target_file);
+        int col_index_reg = code_gen(t->right->right,target_file);
+        printf("%d\n",row_index_reg);
+        printf("%d\n",col_index_reg);
+        int storage_location = Gentry->binding;
+        int col = Gentry->col;
+        fprintf(target_file,"MOV R%d, %d\n",reg_result,storage_location);
+        fprintf(target_file,"MUL R%d ,%d\n",row_index_reg,col);
+        fprintf(target_file,"ADD R%d ,R%d\n",reg_result,row_index_reg);
+        fprintf(target_file,"ADD R%d, R%d\n",reg_result,col_index_reg);
+        fprintf(target_file,"MOV R%d, [R%d]\n",reg_result,reg_result);
+        freeReg(); //for freeing row_index_reg and col_index_reg
+        freeReg();
+        return reg_result;
+    }
+    
 }
 
 
@@ -94,14 +115,29 @@ void read_code_gen(struct tnode *t, FILE *target_file)
     int storage_location;
     struct tnode *identifier_node = t->left;
     if(identifier_node->nodetype==ARRAY_NODE){
-        int index_reg;
-        index_reg = code_gen(identifier_node->right,target_file);
         struct Gsymbol* Gentry = identifier_node->left->Gentry;
         int storage_location = Gentry->binding;
+        if(identifier_node->right->nodetype==_2D_ARRAY_NODE){
+            int row_index_reg = code_gen(identifier_node->right->left,target_file);
+            int col_index_reg = code_gen(identifier_node->right->right,target_file);
+            int col = Gentry->col;
+            fprintf(target_file,"MOV R%d, %d\n",reg_result,storage_location);
+            fprintf(target_file,"MUL R%d, %d\n",row_index_reg,col);
+            fprintf(target_file,"ADD R%d ,R%d\n",reg_result,row_index_reg);
+            fprintf(target_file,"ADD R%d, R%d\n",reg_result,col_index_reg);
+            freeReg();
+            freeReg();
+        }else{
+            int index_reg;
+        index_reg = code_gen(identifier_node->right,target_file);
+        
+        
         
         fprintf(target_file,"MOV R%d, %d\n",reg_result,storage_location);
         fprintf(target_file,"ADD R%d, R%d\n",reg_result,index_reg);
         freeReg();
+        }
+        
     }
     else{
         storage_location = identifier_node->Gentry->binding;

@@ -96,8 +96,6 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
         if (l->type != r->type)
         {
             printf("%s\n",temp->op);
-            // printf("%s\n",l->varname);
-            // printf("%s\n",r->varname);
             printf("%d %d\n",l->type,r->type);
             printf("TYPE ERROR:\n");
             exit(1);
@@ -112,7 +110,7 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
         }
     }
     else if(temp->nodetype==ARRAY_NODE){
-        struct Gsymbol* Gentry = LookUp(l->varname);
+        struct Gsymbol* Gentry = l->Gentry;
         if(r->nodetype==CONST_NODE){
             int index = r->val;
             if(index>=(Gentry->row)){
@@ -122,13 +120,46 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
             temp->type = Gentry->type;
         }
         else if(r->nodetype==IDENTIFIER_NODE){
-            struct Gsymbol* index_Gentry = LookUp(r->varname);
+            struct Gsymbol* index_Gentry = r->Gentry;
             // printf("%d\n",index_Gentry->type);
             if(index_Gentry->type!=INTEGER_TYPE){
                 printf("ERROR: INDEXING BY A NON_INTEGER VALUE\n");
                 exit(1);
             }
             temp->type=index_Gentry->type;
+        }
+        else if(r->nodetype==_2D_ARRAY_NODE){
+            struct tnode* _2D_node = r;
+            
+            if(_2D_node->left->nodetype==CONST_NODE){
+                int row_index = _2D_node->left->val;
+                if(row_index>=(Gentry->row)){
+                    printf("ERROR: INDEX OUT OF BOUNDS\n");
+                    exit(1);
+                }
+            }else{
+                struct Gsymbol* index_Gentry = _2D_node->left->Gentry;
+            // printf("%d\n",index_Gentry->type);
+                if(index_Gentry->type!=INTEGER_TYPE){
+                    printf("ERROR: INDEXING BY A NON_INTEGER VALUE\n");
+                    exit(1);
+                }
+            }
+            if(_2D_node->right->nodetype==CONST_NODE){
+                int row_index = _2D_node->right->val;
+                if(row_index>=(Gentry->col)){
+                    printf("ERROR: INDEX OUT OF BOUNDS\n");
+                    exit(1);
+                }
+            }else{
+                struct Gsymbol* index_Gentry = _2D_node->right->Gentry;
+            // printf("%d\n",index_Gentry->type);
+                if(index_Gentry->type!=INTEGER_TYPE){
+                    printf("ERROR: INDEXING BY A NON_INTEGER VALUE\n");
+                    exit(1);
+                }
+            }
+            temp->type = Gentry->type;
         }
     }
     temp->left = l;
@@ -385,6 +416,9 @@ void preorder(struct tnode *root)
     }
     else if(root->nodetype==ARRAY_NODE){
         printf("array ");
+    }
+    else if(root->nodetype==_2D_ARRAY_NODE){
+        printf("2d ");
     }
     else if (root->nodetype==CONST_NODE)
     {

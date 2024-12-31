@@ -14,7 +14,7 @@
   struct tnode *no;
   int integer;
 }
-%type <no> expr NUM STRING program END ID Slist Stmt InputStmt OutputStmt AsgStmt WhileStmt Ifstmt BreakStmt ContinueStmt DoWhileStmt Declarations DeclList Decl Varlist Identifier
+%type <no> expr NUM STRING program END ID Slist Stmt InputStmt OutputStmt AsgStmt WhileStmt Ifstmt BreakStmt ContinueStmt DoWhileStmt Declarations DeclList Decl Varlist Identifier index
 %type <integer> Type
 %token NUM STRING PLUS MINUS MUL DIV MOD END PBEGIN READ WRITE ID IF ELSE THEN ENDIF ENDWHILE WHILE OR AND LT GT LTE GTE EQUALS NOTEQUALS DO BREAK CONTINUE DECL ENDDECL INT STR
 %left OR
@@ -63,6 +63,7 @@ Decl : Type Varlist ';' {
       printf("ERROR: REDECLARATION OF VARIABLE: %s\n",varList->varname);
       exit(1);
     }
+    // free($2);
     varList=varList->right;
   }
   print_GSymbolTable();
@@ -71,7 +72,16 @@ Decl : Type Varlist ';' {
 Type : INT {$$ = INTEGER_TYPE;} 
 | STR {$$ = STRING_TYPE;}
 
-Varlist : Varlist ',' ID '[' NUM ']' {
+Varlist :Varlist ',' ID '[' NUM ']' '[' NUM ']' {
+  struct tnode* IDNode = createNode(-1,$5->val,$8->val,-1,NULL,$3->varname,-1,NULL,NULL);
+  struct tnode* temp = $1;
+  while (temp->right != NULL) {  
+      temp = temp->right;
+  }
+  temp->right = IDNode;  
+  $$ = $1; 
+}
+  | Varlist ',' ID '[' NUM ']' {
   struct tnode* IDNode = createNode(-1,$5->val,1,-1,NULL,$3->varname,-1,NULL,NULL);
   struct tnode* temp = $1;
   while (temp->right != NULL) {  
@@ -89,6 +99,10 @@ Varlist : Varlist ',' ID '[' NUM ']' {
   temp->right = IDNode;  
   $$ = $1; 
 };
+| ID '[' NUM ']' '[' NUM ']' {
+  printf("2D-ARRAY\n");
+  $$ = createNode(-1,$3->val,$6->val,1,NULL,$1->varname,-1,NULL,NULL);
+}
 | ID '[' NUM ']'{
   // printf("%s\n",$1->varname);
   $$=createNode(-1,$3->val,1,1,NULL,$1->varname,-1,NULL,NULL);
@@ -164,7 +178,7 @@ expr : expr PLUS expr  {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"+");}
 Identifier : ID {
   struct tnode* IDNode = $1;
   // printf("%s\n",IDNode->varname);
-  struct Gsymbol* Gentry = LookUp(IDNode->varname);
+  struct Gsymbol* Gentry = IDNode->Gentry;
   if(Gentry==NULL){
     printf("ERROR: UNDECLARED VARIABLE %s\n",IDNode->varname);
     exit(1);
@@ -178,16 +192,32 @@ Identifier : ID {
   }
   IDNode->type = Gentry->type;
   $$=IDNode;
-};
-  | ID '[' NUM ']'{
+}
+  | ID '[' index ']'{
     // printf("ARRAY\n");
+    struct tnode* IDNode = $1;
+    struct Gsymbol* Gentry = IDNode->Gentry;
+    if(Gentry==NULL){
+      printf("ERROR: UNDECLARED VARIABLE %s\n",IDNode->varname);
+      exit(1);
+    }
+    IDNode->type= Gentry->type;
     $$=makeNonLeafNode($1,$3,ARRAY_NODE,"_");
   
   }
-  | ID '[' Identifier ']'{
-    // printf("ARRAY WITH ID\n");
-    $$=makeNonLeafNode($1,$3,ARRAY_NODE,"_");
+  | ID '[' index ']' '[' index ']'{
+    struct tnode* IDNode = $1;
+    struct Gsymbol* Gentry = IDNode->Gentry;
+    if(Gentry==NULL){
+      printf("ERROR: UNDECLARED VARIABLE %s\n",IDNode->varname);
+      exit(1);
+    }
+    IDNode->type = Gentry->type;
+    struct tnode* _2d_array_node = makeNonLeafNode($3,$6,_2D_ARRAY_NODE,"_");
+    $$ = makeNonLeafNode($1,_2d_array_node,ARRAY_NODE,"_");
   }
+index : NUM {$$=$1;}
+  | Identifier {$$=$1;}
 
 %%
 
