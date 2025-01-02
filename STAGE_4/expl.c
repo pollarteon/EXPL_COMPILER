@@ -118,7 +118,7 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
             else{
                 temp->type = INTEGER_TYPE;
             }
-            if(is_pointer && strcmp(op,"/")==0|| strcmp(op,"%")==0||strcmp(op,"*")==0){
+            if(is_pointer && (strcmp(op,"/")==0|| strcmp(op,"%")==0||strcmp(op,"*")==0)){
                 printf("ERROR: INVALID OPERATION IN POINTER ARITHMETIC\n");
                 exit(1);
             }
