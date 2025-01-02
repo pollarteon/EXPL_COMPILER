@@ -45,7 +45,7 @@ program : PBEGIN Declarations Slist END ';'{
   
   ;
 
-Declarations : DECL DeclList ENDDECL ';' {}
+Declarations : DECL DeclList ENDDECL  {}
 | DECL ENDDECL {};
 
 DeclList : DeclList Decl {}
@@ -58,6 +58,15 @@ Decl : Type Varlist ';' {
     if(LookUp(varList->varname)==NULL){
       int row_num = varList->row;
       int col_num = varList->col;
+      int type = varList->type;
+      if(type==POINTER_TYPE){
+        if(declaration_type==INTEGER_TYPE){
+          G_Install(varList->varname,POINTER_INT_TYPE,row_num,col_num);
+        }else{
+          G_Install(varList->varname,POINTER_STR_TYPE,row_num,col_num);
+        }
+      }
+      else
       G_Install(varList->varname,declaration_type,row_num,col_num);
     }else{
       printf("ERROR: REDECLARATION OF VARIABLE: %s\n",varList->varname);
@@ -81,7 +90,18 @@ Varlist :Varlist ',' ID '[' NUM ']' '[' NUM ']' {
   temp->right = IDNode;  
   $$ = $1; 
 }
-  | Varlist ',' ID '[' NUM ']' {
+| Varlist ',' MUL ID {
+  // printf("POINTER Variable\n");
+  struct tnode* IDNode = createNode(-1,1,-1,POINTER_TYPE,NULL,$4->varname,-1,NULL,NULL);
+  struct tnode* temp = $1;
+  while (temp->right != NULL) {  
+      temp = temp->right;
+  }
+  temp->right = IDNode;  
+  $$ = $1; 
+}
+
+| Varlist ',' ID '[' NUM ']' {
   struct tnode* IDNode = createNode(-1,$5->val,1,-1,NULL,$3->varname,-1,NULL,NULL);
   struct tnode* temp = $1;
   while (temp->right != NULL) {  
@@ -100,7 +120,7 @@ Varlist :Varlist ',' ID '[' NUM ']' '[' NUM ']' {
   $$ = $1; 
 };
 | ID '[' NUM ']' '[' NUM ']' {
-  printf("2D-ARRAY\n");
+  // printf("2D-ARRAY\n");
   $$ = createNode(-1,$3->val,$6->val,1,NULL,$1->varname,-1,NULL,NULL);
 }
 | ID '[' NUM ']'{
@@ -111,6 +131,10 @@ Varlist :Varlist ',' ID '[' NUM ']' '[' NUM ']' {
   // printf("%s\n",$1->varname);
     $$=createNode(-1,1,-1,-1,NULL,$1->varname,-1,NULL,NULL);
   };
+| MUL ID {
+  // printf("Pointer Variable\n");
+  $$ = createNode(-1,1,-1,POINTER_TYPE,NULL,$2->varname,-1,NULL,NULL);
+}
 
 Slist : Slist Stmt {
   $$=createNode(-1,1,1,-1,NULL,NULL,CONNECTOR_NODE,$1,$2);
@@ -197,6 +221,7 @@ Identifier : ID {
     // printf("ARRAY\n");
     struct tnode* IDNode = $1;
     struct Gsymbol* Gentry = IDNode->Gentry;
+    // printf("%s\n",IDNode->varname);
     if(Gentry==NULL){
       printf("ERROR: UNDECLARED VARIABLE %s\n",IDNode->varname);
       exit(1);
@@ -216,6 +241,50 @@ Identifier : ID {
     struct tnode* _2d_array_node = makeNonLeafNode($3,$6,_2D_ARRAY_NODE,"_");
     $$ = makeNonLeafNode($1,_2d_array_node,ARRAY_NODE,"_");
   }
+  | MUL ID {
+    struct tnode* IDNode = $2;
+    struct tnode* dereference_node ;
+    struct Gsymbol* Gentry = IDNode->Gentry;
+    if(Gentry==NULL){
+      printf("ERROR: UNDECLARED VARIABLE %s\n",IDNode->varname);
+      exit(1);
+    }
+    if (Gentry->type != POINTER_INT_TYPE && Gentry->type != POINTER_STR_TYPE){
+      printf("%d\n",Gentry->type);
+      printf("ERROR: DEREFERENCING A NON_POINTER VARIABLE %s\n",Gentry->name);
+      exit(1);
+    }
+    if (Gentry->type == POINTER_INT_TYPE){
+      IDNode->type = INTEGER_TYPE;
+    }
+    else
+      IDNode->type=STRING_TYPE;
+    printf("type :%d\n",IDNode->type);
+    dereference_node = makeNonLeafNode(IDNode,NULL,DEREFERENCE_NODE,"_");
+    dereference_node->type = IDNode->type;
+    $$ = dereference_node;
+  }
+  | '&' Identifier {
+    struct tnode* IDNode = $2;
+    struct Gsymbol* Gentry = IDNode->Gentry;
+    if(IDNode->nodetype==ARRAY_NODE){
+      Gentry = IDNode->left->Gentry;
+    }
+    if(Gentry==NULL){
+      printf("ERROR: UNDECLARED VARIABLE %s\n",IDNode->varname);
+      exit(1);
+    }
+    IDNode->type = Gentry->type;
+    struct tnode* addressNode = makeNonLeafNode(IDNode,NULL,ADDRESS_NODE,"_");
+    // printf("%d\n",Gentry->type);
+    if(Gentry->type == INTEGER_TYPE || Gentry->type==POINTER_INT_TYPE)
+    addressNode->type = POINTER_INT_TYPE;
+    else
+    addressNode->type = POINTER_STR_TYPE;
+    // printf("%d\n",addressNode->type);
+    $$ = addressNode;
+  }
+
 index : NUM {$$=$1;}
   | Identifier {$$=$1;}
 

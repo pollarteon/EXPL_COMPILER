@@ -17,6 +17,12 @@
 #define STRING_TYPE 17
 #define ARRAY_NODE 18
 #define _2D_ARRAY_NODE 19
+#define POINTER_TYPE 22
+#define POINTER_INT_TYPE 20
+#define POINTER_STR_TYPE 21
+#define ADDRESS_NODE 22
+#define DEREFERENCE_NODE 23
+
 
 
 

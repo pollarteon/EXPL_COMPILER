@@ -1,7 +1,6 @@
-// #include "expl.h"
-// #include <string.h>
 
-struct tnode *createNode(int val,int row,int col, int type, char *c,char* varname,int nodeType, struct tnode *l, struct tnode *r)
+
+struct tnode *createNode(int val, int row, int col, int type, char *c, char *varname, int nodeType, struct tnode *l, struct tnode *r)
 {
     // printf("Hello\n");
     struct tnode *temp;
@@ -11,12 +10,12 @@ struct tnode *createNode(int val,int row,int col, int type, char *c,char* varnam
     temp->val = val;
     temp->left = l;
     temp->right = r;
-    temp->size = row*col;
+    temp->size = row * col;
     temp->row = row;
     temp->col = col;
     temp->varname = varname ? strdup(varname) : NULL;
     temp->nodetype = nodeType;
-    temp->Gentry=NULL;
+    temp->Gentry = NULL;
     return temp;
 }
 
@@ -31,10 +30,10 @@ struct tnode *makeNUMNode(int n)
     temp->varname = NULL;
     temp->left = NULL;
     temp->right = NULL;
-    temp->Gentry=NULL;
-    temp->size =1;
-    temp->row =1;
-    temp->col =1;
+    temp->Gentry = NULL;
+    temp->size = 1;
+    temp->row = 1;
+    temp->col = 1;
     // printf("MADE NUM NODE: %d\n",temp->val);
     return temp;
 }
@@ -51,10 +50,10 @@ struct tnode *makeIDNode(char *varName)
     temp->val = -1;
     temp->nodetype = IDENTIFIER_NODE;
     temp->varname = strdup(varName); // useful for Identifier Node
-    temp->Gentry=NULL;
-    temp->size=1;
-    temp->row=1;
-    temp->col=1;
+    temp->Gentry = NULL;
+    temp->size = 1;
+    temp->row = 1;
+    temp->col = 1;
     // printf("MADE ID NODE: %c\n",*(temp->varname));
     return temp;
 }
@@ -68,40 +67,101 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
     temp->type = -1;
     temp->varname = NULL;
     temp->op = NULL;
-    temp->Gentry=NULL;
-    temp->size=1;
-    temp->row=1;
-    temp->col=1;
+    temp->Gentry = NULL;
+    temp->size = 1;
+    temp->row = 1;
+    temp->col = 1;
     if (temp->nodetype == OPERATOR_NODE)
     {
-
+        int is_pointer =0;
         temp->op = op;
-        
-        if (strcmp(op, "+") == 0 || strcmp(op, "-") == 0 || strcmp(op, "/") == 0 || strcmp(op, "*") == 0 || strcmp(op,"%")==0)
+
+        if (strcmp(op, "+") == 0 || strcmp(op, "-") == 0 || strcmp(op, "/") == 0 || strcmp(op, "*") == 0 || strcmp(op, "%") == 0)
         {
-            temp->type = INTEGER_TYPE;
-            if((l->nodetype==IDENTIFIER_NODE && l->Gentry->type!=INTEGER_TYPE) 
-            || (r->nodetype==IDENTIFIER_NODE && r->Gentry->type!=INTEGER_TYPE)
-            || l->type==STRING_TYPE
-            || r->type==STRING_TYPE
-            ){
+            // printf("%d %d\n",l->type,r->type);
+            if (l->type == POINTER_INT_TYPE)
+            {
+                if(r->type !=INTEGER_TYPE){
+                    printf("ERROR: TYPE MISMATCH\n");
+                    exit(1);
+                }
+                is_pointer=1;
+                temp->type = POINTER_INT_TYPE;
+            }
+            else if (l->type == POINTER_STR_TYPE)
+            {
+                if(r->type !=INTEGER_TYPE){
+                    printf("ERROR: TYPE MISMATCH\n");
+                    exit(1);
+                }
+                is_pointer=1;
+                temp->type = POINTER_STR_TYPE;
+            }
+            else if (r->type == POINTER_INT_TYPE)
+            {
+                if(l->type !=INTEGER_TYPE){
+                    printf("ERROR: TYPE MISMATCH\n");
+                    exit(1);
+                }
+                is_pointer=1;
+                temp->type = POINTER_INT_TYPE;
+            }
+            else if (r->type == POINTER_STR_TYPE)
+            {
+                if(l->type !=INTEGER_TYPE){
+                    printf("ERROR: TYPE MISMATCH\n");
+                    exit(1);
+                }
+                is_pointer=1;
+                temp->type = POINTER_STR_TYPE;
+            }
+            else{
+                temp->type = INTEGER_TYPE;
+            }
+            if(is_pointer && strcmp(op,"/")==0|| strcmp(op,"%")==0||strcmp(op,"*")==0){
+                printf("ERROR: INVALID OPERATION IN POINTER ARITHMETIC\n");
+                exit(1);
+            }
+
+            if ((l->nodetype == IDENTIFIER_NODE &&
+                 (l->Gentry->type != INTEGER_TYPE && l->Gentry->type != POINTER_INT_TYPE)) ||
+                (r->nodetype == IDENTIFIER_NODE && (r->Gentry->type != INTEGER_TYPE && r->Gentry->type != POINTER_INT_TYPE)) ||
+                l->type == STRING_TYPE ||
+                r->type == STRING_TYPE)
+            {
                 printf("\n\nERROR:NON-INTEGER TYPE IN ARITMETIC OPERATION\n\n");
                 exit(1);
             }
         }
-        else if(strcmp(op,"=")!=0)
+        else if (strcmp(op, "=") != 0)
         {
             temp->type = BOOLEAN_TYPE;
         }
-        if (l->type != r->type)
+        else // assignment operator
         {
-            printf("%s\n",temp->op);
-            printf("%d %d\n",l->type,r->type);
+            if(l->nodetype ==  ADDRESS_NODE){
+                printf("ERROR: & is an lval operator\n");
+                exit(1);
+            }
+            if (l->type != r->type)
+            {
+                printf("%s\n", temp->op);
+                printf("%d %d\n", l->type, r->type);
+                printf("TYPE ERROR:\n");
+                exit(1);
+            }
+        }
+        // printf("%s\n", temp->op);
+        // printf("%d %d\n", l->type, r->type);
+        if (l->type != r->type && ((l->type == STRING_TYPE || r->type == STRING_TYPE)))
+        {
+            printf("%s\n", temp->op);
+            printf("%d %d\n", l->type, r->type);
             printf("TYPE ERROR:\n");
             exit(1);
         }
     }
-    else if (temp->nodetype == IF_NODE || temp->nodetype == WHILE_NODE || temp->nodetype==DO_WHILE_NODE)
+    else if (temp->nodetype == IF_NODE || temp->nodetype == WHILE_NODE || temp->nodetype == DO_WHILE_NODE)
     {
         if (l->type != BOOLEAN_TYPE)
         {
@@ -109,52 +169,68 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
             exit(1);
         }
     }
-    else if(temp->nodetype==ARRAY_NODE){
-        struct Gsymbol* Gentry = l->Gentry;
-        if(r->nodetype==CONST_NODE){
+    else if (temp->nodetype == ARRAY_NODE)
+    {
+        struct Gsymbol *Gentry = l->Gentry;
+        if (r->nodetype == CONST_NODE)
+        {
             int index = r->val;
-            if(index>=(Gentry->row)){
+            if (index >= (Gentry->row))
+            {
                 printf("ERROR: INDEX OUT OF BOUNDS\n");
                 exit(1);
             }
             temp->type = Gentry->type;
         }
-        else if(r->nodetype==IDENTIFIER_NODE){
-            struct Gsymbol* index_Gentry = r->Gentry;
+        else if (r->nodetype == IDENTIFIER_NODE)
+        {
+            struct Gsymbol *index_Gentry = r->Gentry;
             // printf("%d\n",index_Gentry->type);
-            if(index_Gentry->type!=INTEGER_TYPE){
+            if (index_Gentry->type != INTEGER_TYPE)
+            {
                 printf("ERROR: INDEXING BY A NON_INTEGER VALUE\n");
                 exit(1);
             }
-            temp->type=index_Gentry->type;
+            temp->type = index_Gentry->type;
         }
-        else if(r->nodetype==_2D_ARRAY_NODE){
-            struct tnode* _2D_node = r;
-            
-            if(_2D_node->left->nodetype==CONST_NODE){
+        else if (r->nodetype == _2D_ARRAY_NODE)
+        {
+            struct tnode *_2D_node = r;
+
+            if (_2D_node->left->nodetype == CONST_NODE)
+            {
                 int row_index = _2D_node->left->val;
-                if(row_index>=(Gentry->row)){
+                if (row_index >= (Gentry->row))
+                {
                     printf("ERROR: INDEX OUT OF BOUNDS\n");
                     exit(1);
                 }
-            }else{
-                struct Gsymbol* index_Gentry = _2D_node->left->Gentry;
-            // printf("%d\n",index_Gentry->type);
-                if(index_Gentry->type!=INTEGER_TYPE){
+            }
+            else
+            {
+                struct Gsymbol *index_Gentry = _2D_node->left->Gentry;
+                // printf("%d\n",index_Gentry->type);
+                if (index_Gentry->type != INTEGER_TYPE)
+                {
                     printf("ERROR: INDEXING BY A NON_INTEGER VALUE\n");
                     exit(1);
                 }
             }
-            if(_2D_node->right->nodetype==CONST_NODE){
+            if (_2D_node->right->nodetype == CONST_NODE)
+            {
                 int row_index = _2D_node->right->val;
-                if(row_index>=(Gentry->col)){
+                if (row_index >= (Gentry->col))
+                {
                     printf("ERROR: INDEX OUT OF BOUNDS\n");
                     exit(1);
                 }
-            }else{
-                struct Gsymbol* index_Gentry = _2D_node->right->Gentry;
-            // printf("%d\n",index_Gentry->type);
-                if(index_Gentry->type!=INTEGER_TYPE){
+            }
+            else
+            {
+                struct Gsymbol *index_Gentry = _2D_node->right->Gentry;
+                // printf("%d\n",index_Gentry->type);
+                if (index_Gentry->type != INTEGER_TYPE)
+                {
                     printf("ERROR: INDEXING BY A NON_INTEGER VALUE\n");
                     exit(1);
                 }
@@ -169,64 +245,80 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
 
 //----------GLOBAL SYMBOL TABLE FUNCTIONS --------------------------
 
-Gsymbol* G_symbol_table = NULL;
+Gsymbol *G_symbol_table = NULL;
 int binding_pos = 4096;
 
-
-
-struct Gsymbol* LookUp(char* Identifier){
-    if(G_symbol_table==NULL)return NULL;
-    Gsymbol* temp = G_symbol_table;
-    while(temp!=NULL && strcmp(temp->name,Identifier)!=0){
-        temp=temp->next;
+struct Gsymbol *LookUp(char *Identifier)
+{
+    if (G_symbol_table == NULL)
+        return NULL;
+    Gsymbol *temp = G_symbol_table;
+    while (temp != NULL && strcmp(temp->name, Identifier) != 0)
+    {
+        temp = temp->next;
     }
-    if(temp==NULL)return NULL;
+    if (temp == NULL)
+        return NULL;
     return temp;
 }
-void G_Install(char* name, int type, int row,int col) {
-    Gsymbol* new_Entry = (Gsymbol*)malloc(sizeof(Gsymbol));
-    if (new_Entry == NULL) {
+void G_Install(char *name, int type, int row, int col)
+{
+    Gsymbol *new_Entry = (Gsymbol *)malloc(sizeof(Gsymbol));
+    if (new_Entry == NULL)
+    {
         fprintf(stderr, "Error: Memory allocation failed in G_Install.\n");
         exit(1);
     }
     new_Entry->name = strdup(name);
-    if (new_Entry->name == NULL) {
+    if (new_Entry->name == NULL)
+    {
         fprintf(stderr, "Error: Memory allocation failed for variable name.\n");
         free(new_Entry);
         exit(1);
     }
     new_Entry->type = type;
-    if(col==-1) new_Entry->size = row;
-    else new_Entry->size = row*col;
-    new_Entry->row =row;
-    new_Entry->col =col;
+    if (col == -1)
+        new_Entry->size = row;
+    else
+        new_Entry->size = row * col;
+    new_Entry->row = row;
+    new_Entry->col = col;
     new_Entry->binding = binding_pos;
-    if(col==-1) binding_pos +=row;
-    else binding_pos += row*col;  
+    if (col == -1)
+        binding_pos += row;
+    else
+        binding_pos += row * col;
     new_Entry->next = NULL;
 
-    if (G_symbol_table == NULL) {
+    if (G_symbol_table == NULL)
+    {
         G_symbol_table = new_Entry;
-    } else {
-        Gsymbol* temp = G_symbol_table;
-        while (temp->next != NULL) {
+    }
+    else
+    {
+        Gsymbol *temp = G_symbol_table;
+        while (temp->next != NULL)
+        {
             temp = temp->next;
         }
         temp->next = new_Entry;
     }
 }
 
-void print_GSymbolTable(){
-    Gsymbol* temp = G_symbol_table;
-    if(temp==NULL)printf("empty\n");
-    while(temp!=NULL){
-        printf("%s:%d:%d:%d (%d,%d)->",temp->name,temp->binding,temp->type,temp->size,temp->row,temp->col);
-        temp=temp->next;
+void print_GSymbolTable()
+{
+    Gsymbol *temp = G_symbol_table;
+    if (temp == NULL)
+        printf("empty\n");
+    while (temp != NULL)
+    {
+        printf("%s:%d:%d:%d (%d,%d)  |||  ", temp->name, temp->binding, temp->type, temp->size, temp->row, temp->col);
+        temp = temp->next;
     }
     printf("\n");
 };
 
-//evaluator implementation  .....
+// evaluator implementation  .....
 
 int stack_storage[26] = {0};
 
@@ -283,12 +375,16 @@ int evaluator(struct tnode *t)
             }
         }
     }
-    else if(t->nodetype == WHILE_NODE){
-        if(evaluator(t->left)){
+    else if (t->nodetype == WHILE_NODE)
+    {
+        if (evaluator(t->left))
+        {
             evaluator(t->right);
             evaluator(t);
             return -1;
-        }else{
+        }
+        else
+        {
             return -1;
         }
     }
@@ -405,32 +501,44 @@ void preorder(struct tnode *root)
     {
         printf("while ");
     }
-    else if(root->nodetype==BREAK_NODE){
+    else if (root->nodetype == BREAK_NODE)
+    {
         printf("break ");
     }
-    else if(root->nodetype==CONTINUE_NODE){
+    else if (root->nodetype == CONTINUE_NODE)
+    {
         printf("continue ");
     }
-    else if(root->nodetype==DO_WHILE_NODE){
+    else if (root->nodetype == DO_WHILE_NODE)
+    {
         printf("do-while ");
     }
-    else if(root->nodetype==ARRAY_NODE){
+    else if (root->nodetype == ARRAY_NODE)
+    {
         printf("array ");
     }
-    else if(root->nodetype==_2D_ARRAY_NODE){
+    else if (root->nodetype == _2D_ARRAY_NODE)
+    {
         printf("2d ");
     }
-    else if (root->nodetype==CONST_NODE)
+    else if (root->nodetype == ADDRESS_NODE)
     {
-        if(root->type==INTEGER_TYPE)
-        printf("%d ", root->val);
-        else
-        printf("%s ",root->varname);
+        printf("& ");
     }
-    else if (root->nodetype==IDENTIFIER_NODE)
+    else if(root->nodetype == DEREFERENCE_NODE){
+        printf("* ");
+    }
+    else if (root->nodetype == CONST_NODE)
     {
-        if(root->Gentry)
-        printf("%s ",root->Gentry->name);
+        if (root->type == INTEGER_TYPE)
+            printf("%d ", root->val);
+        else
+            printf("%s ", root->varname);
+    }
+    else if (root->nodetype == IDENTIFIER_NODE)
+    {
+        if (root->Gentry)
+            printf("%s ", root->Gentry->name);
     }
     preorder(root->left);
     preorder(root->right);

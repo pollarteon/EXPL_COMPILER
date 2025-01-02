@@ -1,5 +1,4 @@
 // #include <stdio.h>
-// #include "flow_statements.h"
 // #include <string.h>
 
 int register_num = -1;
@@ -91,8 +90,8 @@ int array_code_gen(struct tnode* t,FILE* target_file){
         int reg_result = getReg();
         int row_index_reg = code_gen(t->right->left,target_file);
         int col_index_reg = code_gen(t->right->right,target_file);
-        printf("%d\n",row_index_reg);
-        printf("%d\n",col_index_reg);
+        // printf("%d\n",row_index_reg);
+        // printf("%d\n",col_index_reg);
         int storage_location = Gentry->binding;
         int col = Gentry->col;
         fprintf(target_file,"MOV R%d, %d\n",reg_result,storage_location);
@@ -239,8 +238,53 @@ void do_while_code_gen(struct tnode* t,FILE* target_file){
     return;
 }
 
+int address_of_code_gen(struct tnode* t, FILE* target_file){
+    struct tnode* identifier_node = t->left;
+    if(identifier_node->nodetype==ARRAY_NODE){
+        if(identifier_node->nodetype!=_2D_ARRAY_NODE){
+        int index_reg;
+        int reg_result = getReg();
+        index_reg = code_gen(identifier_node->right,target_file);
+        int storage_location = identifier_node->left->Gentry->binding;
+        fprintf(target_file,"MOV R%d, %d\n",reg_result,storage_location);
+        fprintf(target_file,"ADD R%d, R%d\n",reg_result,index_reg);
+        freeReg(); //for freeing index_reg;
+        return reg_result;
+    }else{
+        int reg_result = getReg();
+        int row_index_reg = code_gen(identifier_node->right->left,target_file);
+        int col_index_reg = code_gen(identifier_node->right->right,target_file);
+        // printf("%d\n",row_index_reg);
+        // printf("%d\n",col_index_reg);
+        int storage_location =identifier_node->left->Gentry->binding;
+        int col = identifier_node->left->Gentry->col;
+        fprintf(target_file,"MOV R%d, %d\n",reg_result,storage_location);
+        fprintf(target_file,"MUL R%d ,%d\n",row_index_reg,col);
+        fprintf(target_file,"ADD R%d ,R%d\n",reg_result,row_index_reg);
+        fprintf(target_file,"ADD R%d, R%d\n",reg_result,col_index_reg);
+        freeReg(); //for freeing row_index_reg and col_index_reg
+        freeReg();
+        return reg_result;
+    }
+    }
+    
+    int storage_location = t->left->Gentry->binding;
+    int reg_result = getReg();
+    // printf("location : %d\n",storage_location);
+    fprintf(target_file,"MOV R%d, %d\n",reg_result,storage_location);
+    return reg_result;
+}
+
+int dereference_code_gen(struct tnode* t , FILE* target_file){
+    int reg_result = getReg();
+    int address_reg = code_gen(t->left,target_file);   
+    fprintf(target_file,"MOV R%d, [R%d]\n",reg_result,address_reg);
+    freeReg();
+    return reg_result;
+}
 
 
+//----------------------------------------------------------------------------
 
 int code_gen(struct tnode *t, FILE *target_file)
 {
@@ -295,6 +339,14 @@ int code_gen(struct tnode *t, FILE *target_file)
         int array_reg = array_code_gen(t,target_file);
         return array_reg;
     }
+    else if(t->nodetype==DEREFERENCE_NODE){
+        int reg = dereference_code_gen(t,target_file);
+        return reg;
+    }
+    else if(t->nodetype==ADDRESS_NODE){
+        int reg = address_of_code_gen(t,target_file);
+        return reg;
+    }
     else if (t->nodetype == OPERATOR_NODE)
     { 
        //if node is assignment operator
@@ -314,6 +366,14 @@ int code_gen(struct tnode *t, FILE *target_file)
                 freeReg();
                 return -1;
             } 
+            if(t->left->nodetype==DEREFERENCE_NODE){
+                int location_reg = code_gen(t->left->left,target_file);
+                fprintf(target_file,"MOV [R%d], R%d\n",location_reg,reg2);
+                freeReg();
+                freeReg();
+                return -1;
+
+            }
             int storage_location = t->left->Gentry->binding;
             // printf("%d\n",storage_location);
             fprintf(target_file,"MOV [%d], R%d\n",storage_location,reg2);

@@ -6,6 +6,7 @@
 
  int number;
  char* variable;
+ int line_number =1;
 %}
 
 %%
@@ -41,6 +42,7 @@
 "*" {return MUL;}
 "/" {return DIV;}
 "%" {return MOD;}
+"&" {return *yytext;}
 "=" {return *yytext;}
 ";" {return *yytext;}
 "," {return *yytext;}
@@ -63,7 +65,7 @@
 [ \t] {}
 [()] {return *yytext;}
 [\[\]] {return *yytext;}
-[\n] {}
+[\n] { line_number++;}
 . {printf("%s ",yytext); yyerror("unknown character\n");exit(1);}
 
 %%
