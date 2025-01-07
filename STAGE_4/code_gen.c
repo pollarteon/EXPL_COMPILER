@@ -2,8 +2,7 @@
 // #include <string.h>
 
 int register_num = -1;
-int label_num =-1;
-
+int label_num = -1;
 
 int getReg()
 {
@@ -27,85 +26,95 @@ void freeReg()
         printf("Error: No need of Freeing\n");
     }
 }
-int getLabel(){
+int getLabel()
+{
     label_num++;
     return label_num;
 }
 
 // for break and continue Label Tracking ................
 
-LabelStack* label_stack = NULL;
+LabelStack *label_stack = NULL;
 
-LabelStack* push_LabelStack(LabelStack* s,int break_label,int continue_label){
-    if(s==NULL){
-        LabelStack* new_entry = (LabelStack*)malloc(sizeof(LabelStack));
-        new_entry->break_label=break_label;
-        new_entry->continue_label=continue_label;
-        new_entry->next=NULL;
-        new_entry->top=new_entry;
+LabelStack *push_LabelStack(LabelStack *s, int break_label, int continue_label)
+{
+    if (s == NULL)
+    {
+        LabelStack *new_entry = (LabelStack *)malloc(sizeof(LabelStack));
+        new_entry->break_label = break_label;
+        new_entry->continue_label = continue_label;
+        new_entry->next = NULL;
+        new_entry->top = new_entry;
         return new_entry;
     }
-    while(s->next!=NULL){
-        s=s->next;
+    while (s->next != NULL)
+    {
+        s = s->next;
     }
-    LabelStack* new_entry = (LabelStack*)malloc(sizeof(LabelStack));
-    new_entry->break_label=break_label;
-    new_entry->continue_label=continue_label;
-    new_entry->next=NULL;
-    s->next=new_entry;
-    s->top=new_entry;
+    LabelStack *new_entry = (LabelStack *)malloc(sizeof(LabelStack));
+    new_entry->break_label = break_label;
+    new_entry->continue_label = continue_label;
+    new_entry->next = NULL;
+    s->next = new_entry;
+    s->top = new_entry;
     return s;
 }
 
-LabelStack* pop_LabelStack(LabelStack* s){
-    if(s==NULL)return NULL;
-    if(s->next==NULL)return NULL;
-    LabelStack* temp =s;
-    while(temp->next->next!=NULL){
-        temp=temp->next;
+LabelStack *pop_LabelStack(LabelStack *s)
+{
+    if (s == NULL)
+        return NULL;
+    if (s->next == NULL)
+        return NULL;
+    LabelStack *temp = s;
+    while (temp->next->next != NULL)
+    {
+        temp = temp->next;
     }
-    temp->next=NULL;
-    s->top =temp;
+    temp->next = NULL;
+    s->top = temp;
     return s;
 }
 
 //.........................................................
 
-//various keyword code -gen functions
-int array_code_gen(struct tnode* t,FILE* target_file){
-    struct Gsymbol* Gentry = t->left->Gentry;
-    if(t->right->nodetype!=_2D_ARRAY_NODE){
+// various keyword code -gen functions
+int array_code_gen(struct tnode *t, FILE *target_file)
+{
+    struct Gsymbol *Gentry = t->left->Gentry;
+    if (t->right->nodetype != _2D_ARRAY_NODE)
+    {
         int index_reg;
         int reg_result = getReg();
-        index_reg = code_gen(t->right,target_file);
+        index_reg = code_gen(t->right, target_file);
         // printf("%d\n",index_reg);
-        
+
         int storage_location = Gentry->binding;
-        fprintf(target_file,"MOV R%d, %d\n",reg_result,storage_location);
-        fprintf(target_file,"ADD R%d, R%d\n",reg_result,index_reg);
-        fprintf(target_file,"MOV R%d, [R%d]\n",reg_result,reg_result);
-        freeReg(); //for freeing index_reg;
+        fprintf(target_file, "MOV R%d, %d\n", reg_result, storage_location);
+        fprintf(target_file, "ADD R%d, R%d\n", reg_result, index_reg);
+        fprintf(target_file, "MOV R%d, [R%d]\n", reg_result, reg_result);
+        freeReg(); // for freeing index_reg;
         return reg_result;
-    }else{
+    }
+    else
+    {
         int reg_result = getReg();
-        int row_index_reg = code_gen(t->right->left,target_file);
-        int col_index_reg = code_gen(t->right->right,target_file);
+        int row_index_reg = code_gen(t->right->left, target_file);
+        int col_index_reg = code_gen(t->right->right, target_file);
         // printf("%d\n",row_index_reg);
         // printf("%d\n",col_index_reg);
         int storage_location = Gentry->binding;
         int col = Gentry->col;
-        fprintf(target_file,"MOV R%d, %d\n",reg_result,storage_location);
-        fprintf(target_file,"MUL R%d ,%d\n",row_index_reg,col);
-        fprintf(target_file,"ADD R%d ,R%d\n",reg_result,row_index_reg);
-        fprintf(target_file,"ADD R%d, R%d\n",reg_result,col_index_reg);
-        fprintf(target_file,"MOV R%d, [R%d]\n",reg_result,reg_result);
-        freeReg(); //for freeing row_index_reg and col_index_reg
+        fprintf(target_file, "MOV R%d, %d\n", reg_result, storage_location);
+        fprintf(target_file, "MUL R%d ,%d\n", row_index_reg, col);
+        fprintf(target_file, "ADD R%d ,R%d\n", reg_result, row_index_reg);
+        fprintf(target_file, "ADD R%d, R%d\n", reg_result, col_index_reg);
+        fprintf(target_file, "MOV R%d, [R%d]\n", reg_result, reg_result);
+        freeReg(); // for freeing row_index_reg and col_index_reg
         freeReg();
         return reg_result;
     }
-    
 }
-
 
 void read_code_gen(struct tnode *t, FILE *target_file)
 {
@@ -113,35 +122,37 @@ void read_code_gen(struct tnode *t, FILE *target_file)
     int reg_num = getReg();
     int storage_location;
     struct tnode *identifier_node = t->left;
-    if(identifier_node->nodetype==ARRAY_NODE){
-        struct Gsymbol* Gentry = identifier_node->left->Gentry;
+    if (identifier_node->nodetype == ARRAY_NODE)
+    {
+        struct Gsymbol *Gentry = identifier_node->left->Gentry;
         int storage_location = Gentry->binding;
-        if(identifier_node->right->nodetype==_2D_ARRAY_NODE){
-            int row_index_reg = code_gen(identifier_node->right->left,target_file);
-            int col_index_reg = code_gen(identifier_node->right->right,target_file);
+        if (identifier_node->right->nodetype == _2D_ARRAY_NODE)
+        {
+            int row_index_reg = code_gen(identifier_node->right->left, target_file);
+            int col_index_reg = code_gen(identifier_node->right->right, target_file);
             int col = Gentry->col;
-            fprintf(target_file,"MOV R%d, %d\n",reg_result,storage_location);
-            fprintf(target_file,"MUL R%d, %d\n",row_index_reg,col);
-            fprintf(target_file,"ADD R%d ,R%d\n",reg_result,row_index_reg);
-            fprintf(target_file,"ADD R%d, R%d\n",reg_result,col_index_reg);
+            fprintf(target_file, "MOV R%d, %d\n", reg_result, storage_location);
+            fprintf(target_file, "MUL R%d, %d\n", row_index_reg, col);
+            fprintf(target_file, "ADD R%d ,R%d\n", reg_result, row_index_reg);
+            fprintf(target_file, "ADD R%d, R%d\n", reg_result, col_index_reg);
             freeReg();
             freeReg();
-        }else{
-            int index_reg;
-        index_reg = code_gen(identifier_node->right,target_file);
-        
-        
-        
-        fprintf(target_file,"MOV R%d, %d\n",reg_result,storage_location);
-        fprintf(target_file,"ADD R%d, R%d\n",reg_result,index_reg);
-        freeReg();
         }
-        
+        else
+        {
+            int index_reg;
+            index_reg = code_gen(identifier_node->right, target_file);
+
+            fprintf(target_file, "MOV R%d, %d\n", reg_result, storage_location);
+            fprintf(target_file, "ADD R%d, R%d\n", reg_result, index_reg);
+            freeReg();
+        }
     }
-    else{
+    else
+    {
         storage_location = identifier_node->Gentry->binding;
-        fprintf(target_file,"MOV R%d, %d\n",reg_result,storage_location);
-    } 
+        fprintf(target_file, "MOV R%d, %d\n", reg_result, storage_location);
+    }
     // printf("%d\n",storageLocation);
     // calling read through library
     fprintf(target_file, "MOV R%d, \"Read\"\n", reg_num);
@@ -153,7 +164,7 @@ void read_code_gen(struct tnode *t, FILE *target_file)
     fprintf(target_file, "PUSH R1\n");           // blank arguement
     fprintf(target_file, "PUSH R1\n");           // for return addr
     fprintf(target_file, "CALL 0\n");            // calling library
-    fprintf(target_file, "POP R0\n");           //pops After module call
+    fprintf(target_file, "POP R0\n");            // pops After module call
     fprintf(target_file, "POP R1\n");
     fprintf(target_file, "POP R1\n");
     fprintf(target_file, "POP R1\n");
@@ -161,11 +172,12 @@ void read_code_gen(struct tnode *t, FILE *target_file)
 
     freeReg();
     freeReg();
-    return ;
+    return;
 }
 
-void write_code_gen(struct tnode* t,FILE* target_file){
-    int result_reg = code_gen(t,target_file);
+void write_code_gen(struct tnode *t, FILE *target_file)
+{
+    int result_reg = code_gen(t, target_file);
     int reg_num = getReg();
     // calling write through library
     fprintf(target_file, "MOV R%d, \"Write\"\n", reg_num);
@@ -177,7 +189,7 @@ void write_code_gen(struct tnode* t,FILE* target_file){
     fprintf(target_file, "PUSH R1\n");           // blank arguement
     fprintf(target_file, "PUSH R1\n");           // for return addr
     fprintf(target_file, "CALL 0\n");            // calling library
-    fprintf(target_file, "POP R0\n");           //pops After module call
+    fprintf(target_file, "POP R0\n");            // pops After module call
     fprintf(target_file, "POP R1\n");
     fprintf(target_file, "POP R1\n");
     fprintf(target_file, "POP R1\n");
@@ -187,102 +199,113 @@ void write_code_gen(struct tnode* t,FILE* target_file){
     return;
 }
 
-void if_code_gen(struct tnode* t,FILE* target_file){
+void if_code_gen(struct tnode *t, FILE *target_file)
+{
     int label1 = getLabel();
-    
-    //generating code for guard expression....
-    int gaurd_reg = code_gen(t->left,target_file);
-    fprintf(target_file,"JZ R%d, L%d\n",gaurd_reg,label1);
+
+    // generating code for guard expression....
+    int gaurd_reg = code_gen(t->left, target_file);
+    fprintf(target_file, "JZ R%d, L%d\n", gaurd_reg, label1);
     freeReg();
-    if(t->right->nodetype==ELSE_NODE){
+    if (t->right->nodetype == ELSE_NODE)
+    {
         int label2 = getLabel();
-        code_gen(t->right->left,target_file);
-        fprintf(target_file,"JMP L%d\n",label2);
-        fprintf(target_file,"L%d:\n",label1);
-        code_gen(t->right->right,target_file);
-        fprintf(target_file,"L%d:\n",label2);
-    }else{
-        code_gen(t->right,target_file);
-        fprintf(target_file,"L%d:\n",label1);
+        code_gen(t->right->left, target_file);
+        fprintf(target_file, "JMP L%d\n", label2);
+        fprintf(target_file, "L%d:\n", label1);
+        code_gen(t->right->right, target_file);
+        fprintf(target_file, "L%d:\n", label2);
+    }
+    else
+    {
+        code_gen(t->right, target_file);
+        fprintf(target_file, "L%d:\n", label1);
     }
     return;
 }
 
-void while_code_gen(struct tnode* t,FILE* target_file){
+void while_code_gen(struct tnode *t, FILE *target_file)
+{
     int loop_label = getLabel();
     int exit_label = getLabel();
-    label_stack =  push_LabelStack(label_stack,exit_label,loop_label);
-    fprintf(target_file,"L%d:\n",loop_label);
-    int guard_reg = code_gen(t->left,target_file);    
-    fprintf(target_file,"JZ R%d, L%d\n",guard_reg,exit_label);
+    label_stack = push_LabelStack(label_stack, exit_label, loop_label);
+    fprintf(target_file, "L%d:\n", loop_label);
+    int guard_reg = code_gen(t->left, target_file);
+    fprintf(target_file, "JZ R%d, L%d\n", guard_reg, exit_label);
     freeReg();
-    code_gen(t->right,target_file);
-    fprintf(target_file,"JMP L%d\n",loop_label);
-    fprintf(target_file,"L%d:\n",exit_label);
+    code_gen(t->right, target_file);
+    fprintf(target_file, "JMP L%d\n", loop_label);
+    fprintf(target_file, "L%d:\n", exit_label);
     pop_LabelStack(label_stack);
     return;
 }
 
-void do_while_code_gen(struct tnode* t,FILE* target_file){
+void do_while_code_gen(struct tnode *t, FILE *target_file)
+{
     int loop_label = getLabel();
     int exit_label = getLabel();
-    label_stack = push_LabelStack(label_stack,exit_label,loop_label);
-    fprintf(target_file,"L%d:\n",loop_label);
-    code_gen(t->right,target_file);
-    int guard_reg = code_gen(t->left,target_file);
-    fprintf(target_file,"JZ R%d, L%d\n",guard_reg,exit_label);
+    label_stack = push_LabelStack(label_stack, exit_label, loop_label);
+    fprintf(target_file, "L%d:\n", loop_label);
+    code_gen(t->right, target_file);
+    int guard_reg = code_gen(t->left, target_file);
+    fprintf(target_file, "JZ R%d, L%d\n", guard_reg, exit_label);
     freeReg();
-    fprintf(target_file,"JMP L%d\n",loop_label);
-    fprintf(target_file,"L%d:\n",exit_label);
+    fprintf(target_file, "JMP L%d\n", loop_label);
+    fprintf(target_file, "L%d:\n", exit_label);
     pop_LabelStack(label_stack);
     return;
 }
 
-int address_of_code_gen(struct tnode* t, FILE* target_file){
-    struct tnode* identifier_node = t->left;
-    if(identifier_node->nodetype==ARRAY_NODE){
-        if(identifier_node->nodetype!=_2D_ARRAY_NODE){
-        int index_reg;
-        int reg_result = getReg();
-        index_reg = code_gen(identifier_node->right,target_file);
-        int storage_location = identifier_node->left->Gentry->binding;
-        fprintf(target_file,"MOV R%d, %d\n",reg_result,storage_location);
-        fprintf(target_file,"ADD R%d, R%d\n",reg_result,index_reg);
-        freeReg(); //for freeing index_reg;
-        return reg_result;
-    }else{
-        int reg_result = getReg();
-        int row_index_reg = code_gen(identifier_node->right->left,target_file);
-        int col_index_reg = code_gen(identifier_node->right->right,target_file);
-        // printf("%d\n",row_index_reg);
-        // printf("%d\n",col_index_reg);
-        int storage_location =identifier_node->left->Gentry->binding;
-        int col = identifier_node->left->Gentry->col;
-        fprintf(target_file,"MOV R%d, %d\n",reg_result,storage_location);
-        fprintf(target_file,"MUL R%d ,%d\n",row_index_reg,col);
-        fprintf(target_file,"ADD R%d ,R%d\n",reg_result,row_index_reg);
-        fprintf(target_file,"ADD R%d, R%d\n",reg_result,col_index_reg);
-        freeReg(); //for freeing row_index_reg and col_index_reg
-        freeReg();
-        return reg_result;
+int address_of_code_gen(struct tnode *t, FILE *target_file)
+{
+    struct tnode *identifier_node = t->left;
+    if (identifier_node->nodetype == ARRAY_NODE)
+    {
+        if (identifier_node->nodetype != _2D_ARRAY_NODE)
+        {
+            int index_reg;
+            int reg_result = getReg();
+            index_reg = code_gen(identifier_node->right, target_file);
+            int storage_location = identifier_node->left->Gentry->binding;
+            fprintf(target_file, "MOV R%d, %d\n", reg_result, storage_location);
+            fprintf(target_file, "ADD R%d, R%d\n", reg_result, index_reg);
+            freeReg(); // for freeing index_reg;
+            return reg_result;
+        }
+        else
+        {
+            int reg_result = getReg();
+            int row_index_reg = code_gen(identifier_node->right->left, target_file);
+            int col_index_reg = code_gen(identifier_node->right->right, target_file);
+            // printf("%d\n",row_index_reg);
+            // printf("%d\n",col_index_reg);
+            int storage_location = identifier_node->left->Gentry->binding;
+            int col = identifier_node->left->Gentry->col;
+            fprintf(target_file, "MOV R%d, %d\n", reg_result, storage_location);
+            fprintf(target_file, "MUL R%d ,%d\n", row_index_reg, col);
+            fprintf(target_file, "ADD R%d ,R%d\n", reg_result, row_index_reg);
+            fprintf(target_file, "ADD R%d, R%d\n", reg_result, col_index_reg);
+            freeReg(); // for freeing row_index_reg and col_index_reg
+            freeReg();
+            return reg_result;
+        }
     }
-    }
-    
+
     int storage_location = t->left->Gentry->binding;
     int reg_result = getReg();
     // printf("location : %d\n",storage_location);
-    fprintf(target_file,"MOV R%d, %d\n",reg_result,storage_location);
+    fprintf(target_file, "MOV R%d, %d\n", reg_result, storage_location);
     return reg_result;
 }
 
-int dereference_code_gen(struct tnode* t , FILE* target_file){
+int dereference_code_gen(struct tnode *t, FILE *target_file)
+{
     int reg_result = getReg();
-    int address_reg = code_gen(t->left,target_file);   
-    fprintf(target_file,"MOV R%d, [R%d]\n",reg_result,address_reg);
+    int address_reg = code_gen(t->left, target_file);
+    fprintf(target_file, "MOV R%d, [R%d]\n", reg_result, address_reg);
     freeReg();
     return reg_result;
 }
-
 
 //----------------------------------------------------------------------------
 
@@ -297,122 +320,146 @@ int code_gen(struct tnode *t, FILE *target_file)
     }
     else if (t->nodetype == WRITE_NODE)
     {
-        write_code_gen(t->left,target_file);
+        write_code_gen(t->left, target_file);
         return -1;
     }
-    else if(t->nodetype==CONST_NODE){
+    else if (t->nodetype == CONST_NODE)
+    {
         int reg_num = getReg();
-        if(t->type==INTEGER_TYPE)
-        fprintf(target_file, "MOV R%d, %d\n", reg_num, t->val);
+        if (t->type == INTEGER_TYPE)
+            fprintf(target_file, "MOV R%d, %d\n", reg_num, t->val);
         else
-        fprintf(target_file,"MOV R%d, %s\n",reg_num,t->varname);
+            fprintf(target_file, "MOV R%d, %s\n", reg_num, t->varname);
         return reg_num;
     }
-    else if(t->nodetype==IDENTIFIER_NODE){
-        int reg_num  = getReg();
+    else if (t->nodetype == IDENTIFIER_NODE)
+    {
+        int reg_num = getReg();
         int storage_location = t->Gentry->binding;
         // printf("%d\n\n",storage_location);
-        fprintf(target_file,"MOV R%d, [%d]\n",reg_num,storage_location);
+        fprintf(target_file, "MOV R%d, [%d]\n", reg_num, storage_location);
         return reg_num;
     }
-    else if(t->nodetype==IF_NODE){
-        if_code_gen(t,target_file);
+    else if (t->nodetype == IF_NODE)
+    {
+        if_code_gen(t, target_file);
         return -1;
     }
-    else if(t->nodetype==WHILE_NODE){
-        while_code_gen(t,target_file);
+    else if (t->nodetype == WHILE_NODE)
+    {
+        while_code_gen(t, target_file);
         return -1;
     }
-    else if(t->nodetype==DO_WHILE_NODE){
-        do_while_code_gen(t,target_file);
+    else if (t->nodetype == DO_WHILE_NODE)
+    {
+        do_while_code_gen(t, target_file);
         return -1;
     }
-    else if(t->nodetype==BREAK_NODE){
-        fprintf(target_file,"JMP L%d\n",label_stack->top->break_label);
+    else if (t->nodetype == BREAK_NODE)
+    {
+        fprintf(target_file, "JMP L%d\n", label_stack->top->break_label);
         return -1;
     }
-    else if(t->nodetype==CONTINUE_NODE){
-        fprintf(target_file,"JMP L%d\n",label_stack->top->continue_label);
+    else if (t->nodetype == CONTINUE_NODE)
+    {
+        fprintf(target_file, "JMP L%d\n", label_stack->top->continue_label);
         return -1;
     }
-    else if(t->nodetype==ARRAY_NODE){
-        int array_reg = array_code_gen(t,target_file);
+    else if (t->nodetype == ARRAY_NODE)
+    {
+        int array_reg = array_code_gen(t, target_file);
         return array_reg;
     }
-    else if(t->nodetype==DEREFERENCE_NODE){
-        int reg = dereference_code_gen(t,target_file);
+    else if (t->nodetype == DEREFERENCE_NODE)
+    {
+        int reg = dereference_code_gen(t, target_file);
         return reg;
     }
-    else if(t->nodetype==ADDRESS_NODE){
-        int reg = address_of_code_gen(t,target_file);
+    else if (t->nodetype == ADDRESS_NODE)
+    {
+        int reg = address_of_code_gen(t, target_file);
         return reg;
     }
     else if (t->nodetype == OPERATOR_NODE)
-    { 
-       //if node is assignment operator
-       if(strcmp(t->op,"=")==0){
-            int reg2 = code_gen(t->right,target_file);
-            if(t->left->nodetype==ARRAY_NODE){
+    {
+        // if node is assignment operator
+        if (strcmp(t->op, "=") == 0)
+        {
+            int reg2 = code_gen(t->right, target_file);
+            if (t->left->nodetype == ARRAY_NODE)
+            {
                 int index_reg;
-                index_reg = code_gen(t->left->right,target_file);
-                struct Gsymbol* Gentry = (t->left->left->Gentry);
+                index_reg = code_gen(t->left->right, target_file);
+                struct Gsymbol *Gentry = (t->left->left->Gentry);
                 int storage_location = Gentry->binding;
                 int reg_result = getReg();
-                fprintf(target_file,"MOV R%d, %d\n",reg_result,storage_location);
-                fprintf(target_file,"ADD R%d, R%d\n",reg_result,index_reg);
-                fprintf(target_file,"MOV [R%d],R%d\n",reg_result,reg2);
+                fprintf(target_file, "MOV R%d, %d\n", reg_result, storage_location);
+                fprintf(target_file, "ADD R%d, R%d\n", reg_result, index_reg);
+                fprintf(target_file, "MOV [R%d],R%d\n", reg_result, reg2);
                 freeReg();
                 freeReg();
                 freeReg();
                 return -1;
-            } 
-            if(t->left->nodetype==DEREFERENCE_NODE){
-                int location_reg = code_gen(t->left->left,target_file);
-                fprintf(target_file,"MOV [R%d], R%d\n",location_reg,reg2);
+            }
+            if (t->left->nodetype == DEREFERENCE_NODE)
+            {
+                int location_reg = code_gen(t->left->left, target_file);
+                fprintf(target_file, "MOV [R%d], R%d\n", location_reg, reg2);
                 freeReg();
                 freeReg();
                 return -1;
-
             }
             int storage_location = t->left->Gentry->binding;
             // printf("%d\n",storage_location);
-            fprintf(target_file,"MOV [%d], R%d\n",storage_location,reg2);
+            fprintf(target_file, "MOV [%d], R%d\n", storage_location, reg2);
             freeReg();
             return -1;
-       }    
+        }
         // node is a arithmetic operator node or logical operator node
 
         int reg1 = code_gen(t->left, target_file);
         int reg2 = code_gen(t->right, target_file);
-        if(strcmp(t->op,"+")==0) fprintf(target_file,"ADD R%d, R%d\n",reg1,reg2);
-        else if (strcmp(t->op,"-")==0) fprintf(target_file,"SUB R%d, R%d\n",reg1,reg2);
-        else if (strcmp(t->op,"*")==0) fprintf(target_file,"MUL R%d, R%d\n",reg1,reg2);
-        else if (strcmp(t->op,"/")==0) fprintf(target_file,"DIV R%d, R%d\n",reg1,reg2);
-        else if (strcmp(t->op,"%")==0) fprintf(target_file,"MOD R%d, R%d\n",reg1,reg2);
-        else if (strcmp(t->op,"<")==0) fprintf(target_file,"LT R%d, R%d\n",reg1,reg2);
-        else if (strcmp(t->op,"<=")==0) fprintf(target_file,"LE R%d, R%d\n",reg1,reg2);
-        else if (strcmp(t->op,">")==0) fprintf(target_file,"GT R%d, R%d\n",reg1,reg2);
-        else if (strcmp(t->op,">=")==0) fprintf(target_file,"GE R%d, R%d\n",reg1,reg2);
-        else if (strcmp(t->op,"==")==0) fprintf(target_file,"EQ R%d, R%d\n",reg1,reg2);
-        else if (strcmp(t->op,"!=")==0) fprintf(target_file,"NE R%d, R%d\n",reg1,reg2);
-        else if (strcmp(t->op,"&&")==0) fprintf(target_file,"AND R%d, R%d\n",reg1,reg2);// check later
-        else if (strcmp(t->op,"||")==0) fprintf(target_file,"OR R%d, R%d\n",reg1,reg2);//check later
+        if (strcmp(t->op, "+") == 0)
+            fprintf(target_file, "ADD R%d, R%d\n", reg1, reg2);
+        else if (strcmp(t->op, "-") == 0)
+            fprintf(target_file, "SUB R%d, R%d\n", reg1, reg2);
+        else if (strcmp(t->op, "*") == 0)
+            fprintf(target_file, "MUL R%d, R%d\n", reg1, reg2);
+        else if (strcmp(t->op, "/") == 0)
+            fprintf(target_file, "DIV R%d, R%d\n", reg1, reg2);
+        else if (strcmp(t->op, "%") == 0)
+            fprintf(target_file, "MOD R%d, R%d\n", reg1, reg2);
+        else if (strcmp(t->op, "<") == 0)
+            fprintf(target_file, "LT R%d, R%d\n", reg1, reg2);
+        else if (strcmp(t->op, "<=") == 0)
+            fprintf(target_file, "LE R%d, R%d\n", reg1, reg2);
+        else if (strcmp(t->op, ">") == 0)
+            fprintf(target_file, "GT R%d, R%d\n", reg1, reg2);
+        else if (strcmp(t->op, ">=") == 0)
+            fprintf(target_file, "GE R%d, R%d\n", reg1, reg2);
+        else if (strcmp(t->op, "==") == 0)
+            fprintf(target_file, "EQ R%d, R%d\n", reg1, reg2);
+        else if (strcmp(t->op, "!=") == 0)
+            fprintf(target_file, "NE R%d, R%d\n", reg1, reg2);
+        else if (strcmp(t->op, "&&") == 0)
+            fprintf(target_file, "AND R%d, R%d\n", reg1, reg2); // check later
+        else if (strcmp(t->op, "||") == 0)
+            fprintf(target_file, "OR R%d, R%d\n", reg1, reg2); // check later
         freeReg();
         // printf("%d\n",reg1);
         return reg1;
-    }else{
-        int reg1 = code_gen(t->left,target_file);
-        int reg2 = code_gen(t->right,target_file);
+    }
+    else
+    {
+        int reg1 = code_gen(t->left, target_file);
+        int reg2 = code_gen(t->right, target_file);
         return -1;
     }
-    
 
     return -1;
 }
 
-
-
-// STAGE 1 EXERCISE 
+// STAGE 1 EXERCISE
 
 // void store_stack(int reg_num, FILE *target_file)
 // {
