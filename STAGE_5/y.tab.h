@@ -139,9 +139,10 @@ union YYSTYPE
 
   struct tnode *no;
   struct ParamList* plist;
+  struct FuncArgs* arglist;
   int integer;
 
-#line 145 "y.tab.h"
+#line 146 "y.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

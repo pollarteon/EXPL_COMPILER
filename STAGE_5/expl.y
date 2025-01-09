@@ -13,6 +13,7 @@
 %union{
   struct tnode *no;
   struct ParamList* plist;
+  struct FuncArgs* arglist;
   int integer;
 }
 %type <no> expr NUM STRING program END ID Slist Stmt
@@ -20,9 +21,10 @@
 %type <no> BreakStmt ContinueStmt DoWhileStmt 
 %type <no> Identifier index
 %type <no>  FdefBlock MainBlock Gdecl GidList Gid
-%type <no> Fdef  LdeclBlock Body LdecList Ldecl IdList ArgList Lid
+%type <no> Fdef  LdeclBlock Body LdecList Ldecl IdList Lid
 %type <integer> Type
 %type <plist> ParamList Param
+%type <arglist> ArgList
 %token NUM STRING PLUS MINUS MUL DIV MOD END PBEGIN READ WRITE ID IF ELSE THEN ENDIF ENDWHILE WHILE OR AND LT GT LTE GTE EQUALS NOTEQUALS DO BREAK CONTINUE DECL ENDDECL INT STR MAIN
 %left OR
 %left AND
@@ -145,7 +147,6 @@ Fdef : Type ID '(' ParamList ')' '{' LdeclBlock Body '}' {
     preorder($8);
     printf("\n\n");
     fprintf(target_file,"F%d:\n",Gentry->flabel);
-    
     code_gen($8,target_file);
     L_cleanup();
     fclose(target_file);
@@ -321,8 +322,43 @@ expr : expr PLUS expr  {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"+");}
   | expr NOTEQUALS expr {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"!=");}
   | expr AND expr {$$=makeNonLeafNode($1,$3,OPERATOR_NODE,"&&");}
   | expr OR expr {$$=makeNonLeafNode($1,$3,OPERATOR_NODE,"||");}
-  | ID '(' ')' 
-  | ID '(' ArgList ')'
+  | ID '(' ')' {
+    struct tnode* function_node = makeNonLeafNode(NULL,NULL,FUNCTION_NODE,"_");
+    function_node->varname = strdup($1->varname);
+    struct Gsymbol* Gentry = $1->Gentry;
+    if(Gentry==NULL){
+      printf("ERROR: NO SUCH FUNCTION HAS BENN DECLARED!!: %s\n",$1->varname);
+      exit(1);
+    }
+    struct ParamList* param_list = Gentry->param_list;
+    struct ArgList* arg_list = NULL;
+    if(!verify_func_signature(arg_list,param_list)){
+      printf("ERROR:FUNCTION SIGNATURE MISMATCH: %s\n",$1->varname);
+      exit(1);
+    }
+    function_node->Gentry = Gentry;
+    function_node->type = Gentry->type;
+    $$ = function_node;
+  }
+  | ID '(' ArgList ')'{
+    struct tnode* function_node = makeNonLeafNode(NULL,NULL,FUNCTION_NODE,"_");
+    function_node->argList = $3;
+    function_node->varname = strdup($1->varname);
+    struct Gsymbol* Gentry = $1->Gentry;
+    if(Gentry==NULL){
+      printf("ERROR: NO SUCH FUNCTION HAS BEEN DECLARED!!: %s\n",$1->varname);
+      exit(1);
+    }
+    struct ParamList* param_list = Gentry->param_list;
+    struct ArgList* arg_list = $3;
+    if(verify_func_signature(arg_list,param_list)==0){
+      printf("ERROR:FUNCTION SIGNATURE MISMATCH: %s\n",$1->varname);
+      exit(1);
+    }
+    function_node->Gentry = Gentry;
+    function_node->type = Gentry->type;
+    $$=function_node;
+  }
   | '(' expr ')'  {$$ = $2;}
   | NUM   {$$ = $1;}
   | STRING {$$=$1;}
@@ -330,97 +366,79 @@ expr : expr PLUS expr  {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"+");}
   
   ;
 
-ArgList : ArgList ',' expr | expr
+ArgList : ArgList ',' expr {
+  $$=append_arglist($1,$3);
+} 
+| expr {
+  $$=create_arglist($1);
+}
 
 Identifier : ID {
-  struct tnode* IDNode = $1;
-  // printf("%s\n",IDNode->varname);
-  struct Gsymbol* Gentry = IDNode->Gentry;
-  if(Gentry==NULL){
-    printf("ERROR: UNDECLARED VARIABLE %s\n",IDNode->varname);
-    exit(1);
-  } 
-  else{
-    //checking if the identifier was declared as an Array
-    if(Gentry->col!=-1){
-      printf("ERROR: ACCESSING ARRAY WITHOUT INDEX %s\n",IDNode->varname);
-      exit(1);
+    struct tnode* IDNode = $1;
+    int table_type = check_identifier(IDNode);
+    // printf("%d\n",table_type);
+    if (table_type==1) { //GLOBAL variable
+        // Global variable-specific checks
+        if (IDNode->Gentry->row>1) {
+            printf("ERROR: ACCESSING ARRAY WITHOUT INDEX %s\n", IDNode->varname);
+            exit(1);
+        }
     }
-  }
-  IDNode->type = Gentry->type;
-  $$=IDNode;
+    $$ = IDNode;
 }
-  | ID '[' index ']'{
-    // printf("ARRAY\n");
+| ID '[' index ']' {
     struct tnode* IDNode = $1;
-    struct Gsymbol* Gentry = IDNode->Gentry;
-    // printf("%s\n",IDNode->varname);
-    if(Gentry==NULL){
-      printf("ERROR: UNDECLARED VARIABLE %s\n",IDNode->varname);
-      exit(1);
+    int table_type = check_identifier(IDNode);
+    if (table_type==1) {
+        // Array-specific checks
+        if (IDNode->Gentry->col != -1) {
+            printf("ERROR: ACCESSING A 2D-ARRAY VARIABLE %s\n", IDNode->varname);
+            exit(1);
+        }
     }
-    if(Gentry->col!=-1){
-      printf("ERROR: THIS IS AN 2-D ARRAY %s\n",IDNode->varname);
-      exit(1);
-    }
-    IDNode->type= Gentry->type;
-    $$=makeNonLeafNode($1,$3,ARRAY_NODE,"_");
-  
-  }
-  | ID '[' index ']' '[' index ']'{
+    $$ = makeNonLeafNode($1, $3, ARRAY_NODE, "_");
+}
+| ID '[' index ']' '[' index ']' {
     struct tnode* IDNode = $1;
-    struct Gsymbol* Gentry = IDNode->Gentry;
-    if(Gentry==NULL){
-      printf("ERROR: UNDECLARED VARIABLE %s\n",IDNode->varname);
-      exit(1);
+    int table_type = check_identifier(IDNode);
+    if (table_type==1) {
+        if (IDNode->Gentry->col == -1) {
+            printf("ERROR: THIS IS NOT A 2-D ARRAY %s\n", IDNode->varname);
+            exit(1);
+        }
     }
-    IDNode->type = Gentry->type;
-    struct tnode* _2d_array_node = makeNonLeafNode($3,$6,_2D_ARRAY_NODE,"_");
-    $$ = makeNonLeafNode($1,_2d_array_node,ARRAY_NODE,"_");
-  }
-  | MUL ID {
+    struct tnode* _2d_array_node = makeNonLeafNode($3, $6, _2D_ARRAY_NODE, "_");
+    $$ = makeNonLeafNode($1, _2d_array_node, ARRAY_NODE, "_");
+}
+| MUL ID {
     struct tnode* IDNode = $2;
-    struct tnode* dereference_node ;
-    struct Gsymbol* Gentry = IDNode->Gentry;
-    if(Gentry==NULL){
-      printf("ERROR: UNDECLARED VARIABLE %s\n",IDNode->varname);
-      exit(1);
+    int table_type = check_identifier(IDNode);
+    if (table_type == 1) {
+        // Pointer dereferencing checks
+        if (IDNode->Gentry->type != POINTER_INT_TYPE && IDNode->Gentry->type != POINTER_STR_TYPE) {
+            printf("ERROR: DEREFERENCING A NON-POINTER VARIABLE %s\n", IDNode->Gentry->name);
+            exit(1);
+        }
+        IDNode->type = (IDNode->Gentry->type == POINTER_INT_TYPE) ? INTEGER_TYPE : STRING_TYPE;
     }
-    if (Gentry->type != POINTER_INT_TYPE && Gentry->type != POINTER_STR_TYPE){
-      printf("%d\n",Gentry->type);
-      printf("ERROR: DEREFERENCING A NON_POINTER VARIABLE %s\n",Gentry->name);
-      exit(1);
-    }
-    if (Gentry->type == POINTER_INT_TYPE){
-      IDNode->type = INTEGER_TYPE;
-    }
-    else
-      IDNode->type=STRING_TYPE;
-    printf("type :%d\n",IDNode->type);
-    dereference_node = makeNonLeafNode(IDNode,NULL,DEREFERENCE_NODE,"_");
+
+    struct tnode* dereference_node = makeNonLeafNode(IDNode, NULL, DEREFERENCE_NODE, "_");
     dereference_node->type = IDNode->type;
     $$ = dereference_node;
-  }
-  | '&' Identifier {
+}
+| '&' Identifier {
     struct tnode* IDNode = $2;
-    struct Gsymbol* Gentry = IDNode->Gentry;
-    if(IDNode->nodetype==ARRAY_NODE){
-      Gentry = IDNode->left->Gentry;
+    int table_type = check_identifier(IDNode);
+
+    if (table_type == 1) {
+        struct tnode* addressNode = makeNonLeafNode(IDNode, NULL, ADDRESS_NODE, "_");
+        addressNode->type = (IDNode->Gentry->type == INTEGER_TYPE || IDNode->Gentry->type == POINTER_INT_TYPE)
+                                ? POINTER_INT_TYPE
+                                : POINTER_STR_TYPE;
+        $$ = addressNode;
     }
-    if(Gentry==NULL){
-      printf("ERROR: UNDECLARED VARIABLE %s\n",IDNode->varname);
-      exit(1);
-    }
-    IDNode->type = Gentry->type;
-    struct tnode* addressNode = makeNonLeafNode(IDNode,NULL,ADDRESS_NODE,"_");
-    // printf("%d\n",Gentry->type);
-    if(Gentry->type == INTEGER_TYPE || Gentry->type==POINTER_INT_TYPE)
-    addressNode->type = POINTER_INT_TYPE;
-    else
-    addressNode->type = POINTER_STR_TYPE;
-    // printf("%d\n",addressNode->type);
-    $$ = addressNode;
-  }
+}
+;
 
 index : NUM {$$=$1;}
   | Identifier {$$=$1;}

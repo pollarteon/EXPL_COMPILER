@@ -57,11 +57,15 @@
 [a-zA-Z][a-zA-Z0-9_]* {// look later
     variable = yytext;
     yylval.no = makeIDNode(variable);
-    Gsymbol* entry = GLookUp(variable);
-    if(entry!=NULL){
-        // printf("Got the entry from Symbol Table for identifier %s\n",entry->name);
-        (yylval.no)->Gentry = entry;
+    Gsymbol* Gentry = GLookUp(variable);
+    if(Gentry!=NULL){
+        // printf("Got the entry from Symbol Table for identifier %s\n",Gentry->name);
+        (yylval.no)->Gentry = Gentry; //setting Gentry field in the node field
         // printf("%s\n",(yylval.no->Gentry->name));
+    }
+    Lsymbol* Lentry = LLookUp(variable);
+    if(Lentry!=NULL){
+        (yylval.no)->Lentry = Lentry; //setting Lentry Field in tnode
     }
     return ID;
     }

@@ -90,6 +90,7 @@ void header_code_gen(FILE* target_file){
 int array_code_gen(struct tnode *t, FILE *target_file)
 {
     struct Gsymbol *Gentry = t->left->Gentry;
+    printf("Hello\n");
     if (t->right->nodetype != _2D_ARRAY_NODE)
     {
         int index_reg;
@@ -109,8 +110,8 @@ int array_code_gen(struct tnode *t, FILE *target_file)
         int reg_result = getReg();
         int row_index_reg = code_gen(t->right->left, target_file);
         int col_index_reg = code_gen(t->right->right, target_file);
-        // printf("%d\n",row_index_reg);
-        // printf("%d\n",col_index_reg);
+        printf("%d\n",row_index_reg);
+        printf("%d\n",col_index_reg);
         int storage_location = Gentry->binding;
         int col = Gentry->col;
         fprintf(target_file, "MOV R%d, %d\n", reg_result, storage_location);
@@ -343,7 +344,12 @@ int code_gen(struct tnode *t, FILE *target_file)
     else if (t->nodetype == IDENTIFIER_NODE)
     {
         int reg_num = getReg();
-        int storage_location = t->Gentry->binding;
+        int storage_location;
+        if(t->Lentry!=NULL){
+            storage_location = t->Lentry->binding;
+        }else{
+            storage_location=t->Gentry->binding;
+        }
         // printf("%d\n\n",storage_location);
         fprintf(target_file, "MOV R%d, [%d]\n", reg_num, storage_location);
         return reg_num;
@@ -365,6 +371,8 @@ int code_gen(struct tnode *t, FILE *target_file)
     }
     else if (t->nodetype == BREAK_NODE)
     {
+        if(label_stack==NULL) return -1;
+        if(label_stack->top==NULL)return -1;
         fprintf(target_file, "JMP L%d\n", label_stack->top->break_label);
         return -1;
     }
@@ -396,18 +404,38 @@ int code_gen(struct tnode *t, FILE *target_file)
             int reg2 = code_gen(t->right, target_file);
             if (t->left->nodetype == ARRAY_NODE)
             {
-                int index_reg;
-                index_reg = code_gen(t->left->right, target_file);
-                struct Gsymbol *Gentry = (t->left->left->Gentry);
-                int storage_location = Gentry->binding;
-                int reg_result = getReg();
-                fprintf(target_file, "MOV R%d, %d\n", reg_result, storage_location);
-                fprintf(target_file, "ADD R%d, R%d\n", reg_result, index_reg);
-                fprintf(target_file, "MOV [R%d],R%d\n", reg_result, reg2);
-                freeReg();
-                freeReg();
-                freeReg();
-                return -1;
+                if(t->left->right->nodetype!=_2D_ARRAY_NODE){
+                    int index_reg;
+                    index_reg = code_gen(t->left->right, target_file);
+                    struct Gsymbol *Gentry = (t->left->left->Gentry);
+                    int storage_location = Gentry->binding;
+                    int reg_result = getReg();
+                    fprintf(target_file, "MOV R%d, %d\n", reg_result, storage_location);
+                    fprintf(target_file, "ADD R%d, R%d\n", reg_result, index_reg);
+                    fprintf(target_file, "MOV [R%d],R%d\n", reg_result, reg2);
+                    freeReg();
+                    freeReg();
+                    freeReg();
+                    return -1;
+                }
+                else{
+                    int reg_result = getReg();
+                    int row_index_reg = code_gen(t->left->right->left, target_file);
+                    int col_index_reg = code_gen(t->left->right->right, target_file);
+                    struct Gsymbol *Gentry = (t->left->left->Gentry);
+                    int storage_location = Gentry->binding;
+                    int col = Gentry->col;
+                    fprintf(target_file, "MOV R%d, %d\n", reg_result, storage_location);
+                    fprintf(target_file, "MUL R%d ,%d\n", row_index_reg, col);
+                    fprintf(target_file, "ADD R%d ,R%d\n", reg_result, row_index_reg);
+                    fprintf(target_file, "ADD R%d, R%d\n", reg_result, col_index_reg);
+                    fprintf(target_file, "MOV [R%d], R%d\n", reg_result, reg2);
+                    freeReg(); // for freeing row_index_reg and col_index_reg
+                    freeReg();
+                    freeReg();
+                    freeReg();
+                    return -1;
+                }
             }
             if (t->left->nodetype == DEREFERENCE_NODE)
             {
@@ -417,7 +445,12 @@ int code_gen(struct tnode *t, FILE *target_file)
                 freeReg();
                 return -1;
             }
-            int storage_location = t->left->Gentry->binding;
+            int storage_location ;
+            if(t->left->Lentry){
+                storage_location = t->left->Lentry->binding;
+            }else{
+                storage_location = t->left->Gentry->binding;
+            }
             // printf("%d\n",storage_location);
             fprintf(target_file, "MOV [%d], R%d\n", storage_location, reg2);
             freeReg();

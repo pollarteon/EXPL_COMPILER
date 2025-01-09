@@ -18,6 +18,8 @@ struct tnode *createNode(int val, int row, int col, int type, char *c, char *var
     temp->varname = varname ? strdup(varname) : NULL;
     temp->nodetype = nodeType;
     temp->Gentry = NULL;
+    temp->Lentry = NULL;
+    temp->argList = NULL;
     return temp;
 }
 
@@ -33,6 +35,8 @@ struct tnode *makeNUMNode(int n)
     temp->left = NULL;
     temp->right = NULL;
     temp->Gentry = NULL;
+    temp->Lentry = NULL;
+    temp->argList = NULL;
     temp->size = 1;
     temp->row = 1;
     temp->col = 1;
@@ -53,6 +57,8 @@ struct tnode *makeIDNode(char *varName)
     temp->nodetype = IDENTIFIER_NODE;
     temp->varname = strdup(varName); // useful for Identifier Node
     temp->Gentry = NULL;
+    temp->Lentry = NULL;
+    temp->argList = NULL;
     temp->size = 1;
     temp->row = 1;
     temp->col = 1;
@@ -70,6 +76,8 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
     temp->varname = NULL;
     temp->op = NULL;
     temp->Gentry = NULL;
+    temp->Lentry = NULL;
+    temp->argList = NULL;
     temp->size = 1;
     temp->row = 1;
     temp->col = 1;
@@ -124,14 +132,42 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
                 printf("ERROR: INVALID OPERATION IN POINTER ARITHMETIC\n");
                 exit(1);
             }
+            int l_flag = 0;
+            int r_flag = 0;
 
-            if ((l->nodetype == IDENTIFIER_NODE &&
-                 (l->Gentry->type != INTEGER_TYPE && l->Gentry->type != POINTER_INT_TYPE)) ||
-                (r->nodetype == IDENTIFIER_NODE && (r->Gentry->type != INTEGER_TYPE && r->Gentry->type != POINTER_INT_TYPE)) ||
-                l->type == STRING_TYPE ||
-                r->type == STRING_TYPE)
-            {
-                printf("\n\nERROR:NON-INTEGER TYPE IN ARITMETIC OPERATION\n\n");
+            if (l->nodetype == IDENTIFIER_NODE) {
+                struct Gsymbol* Gentry = l->Gentry;
+                struct Lsymbol* Lentry = l->Lentry;
+
+                if (Lentry != NULL) { // Local variable
+                    if (Lentry->type != INTEGER_TYPE && Lentry->type != POINTER_INT_TYPE) {
+                        l_flag = 1;
+                    }
+                } else if (Gentry != NULL) { // Global variable
+                    if (Gentry->type != INTEGER_TYPE && Gentry->type != POINTER_INT_TYPE) {
+                        l_flag = 1;
+                    }
+                }
+            }
+
+            if (r->nodetype == IDENTIFIER_NODE) {
+                struct Gsymbol* Gentry = r->Gentry;
+                struct Lsymbol* Lentry = r->Lentry;
+
+                if (Lentry != NULL) { // Local variable
+                    if (Lentry->type != INTEGER_TYPE && Lentry->type != POINTER_INT_TYPE) {
+                        r_flag = 1;
+                    }
+                } else if (Gentry != NULL) { // Global variable
+                    if (Gentry->type != INTEGER_TYPE && Gentry->type != POINTER_INT_TYPE) {
+                        r_flag = 1;
+                    }
+                }
+            }
+
+            if (l_flag == 1 || r_flag == 1 || l->type == STRING_TYPE || r->type == STRING_TYPE) {
+                printf("%d %d \n", l_flag, r_flag);
+                printf("\n\nERROR: NON-INTEGER TYPE IN ARITHMETIC OPERATION\n\n");
                 exit(1);
             }
         }
@@ -174,6 +210,11 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
     else if (temp->nodetype == ARRAY_NODE)
     {
         struct Gsymbol *Gentry = l->Gentry;
+        if(Gentry==NULL){
+            printf("ERROR: ACCESSING AN ARRAY NOT DECLARED AS A GLOBAL VARIABLE: %s\n",l->varname);
+            exit(1);
+
+        }
         if (r->nodetype == CONST_NODE)
         {
             int index = r->val;
@@ -186,13 +227,21 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
         }
         else if (r->nodetype == IDENTIFIER_NODE)
         {
+            struct Lsymbol *index_Lentry = r->Lentry;
             struct Gsymbol *index_Gentry = r->Gentry;
             // printf("%d\n",index_Gentry->type);
-            if (index_Gentry->type != INTEGER_TYPE)
+            if(index_Lentry && index_Lentry->type!= INTEGER_TYPE){
+                printf("ERROR: INDEXING BY A NON_INTEGER VALUE\n");
+                exit(1);
+            }
+            else if (index_Gentry && index_Gentry->type != INTEGER_TYPE)
             {
                 printf("ERROR: INDEXING BY A NON_INTEGER VALUE\n");
                 exit(1);
             }
+            if(index_Lentry)
+            temp->type = index_Lentry->type;
+            else
             temp->type = index_Gentry->type;
         }
         else if (r->nodetype == _2D_ARRAY_NODE)
@@ -210,13 +259,21 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
             }
             else
             {
+                struct Lsymbol *index_Lentry = _2D_node->left->Lentry;
                 struct Gsymbol *index_Gentry = _2D_node->left->Gentry;
-                // printf("%d\n",index_Gentry->type);
-                if (index_Gentry->type != INTEGER_TYPE)
+                if(index_Lentry && index_Lentry->type!= INTEGER_TYPE){
+                    printf("ERROR: INDEXING BY A NON_INTEGER VALUE\n");
+                    exit(1);
+                }
+                else if (index_Gentry && index_Gentry->type != INTEGER_TYPE)
                 {
                     printf("ERROR: INDEXING BY A NON_INTEGER VALUE\n");
                     exit(1);
                 }
+                if(index_Lentry)
+                temp->type = index_Lentry->type;
+                else
+                temp->type = index_Gentry->type;
             }
             if (_2D_node->right->nodetype == CONST_NODE)
             {
@@ -229,13 +286,21 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
             }
             else
             {
+                struct Lsymbol *index_Lentry = _2D_node->right->Lentry;
                 struct Gsymbol *index_Gentry = _2D_node->right->Gentry;
-                // printf("%d\n",index_Gentry->type);
-                if (index_Gentry->type != INTEGER_TYPE)
+                if(index_Lentry && index_Lentry->type!= INTEGER_TYPE){
+                    printf("ERROR: INDEXING BY A NON_INTEGER VALUE\n");
+                    exit(1);
+                }
+                else if (index_Gentry && index_Gentry->type != INTEGER_TYPE)
                 {
                     printf("ERROR: INDEXING BY A NON_INTEGER VALUE\n");
                     exit(1);
                 }
+                if(index_Lentry)
+                temp->type = index_Lentry->type;
+                else
+                temp->type = index_Gentry->type;
             }
             temp->type = Gentry->type;
         }
@@ -311,6 +376,30 @@ void print_GSymbolTable()
     printf("\n\n");
 };
 //============================================================================
+//IDENTIFIER CHECKING AND SETTING UP
+
+int check_identifier(struct tnode* IDnode){
+    // printf("%s\n",IDnode->Gentry);
+    struct Gsymbol* Gentry = IDnode->Gentry;
+    struct Lsymbol* Lentry = IDnode->Lentry;
+    if(Lentry==NULL && Gentry==NULL){      
+            printf("ERROR: variable not declared: %s\n",IDnode->varname);
+            exit(1);
+    }
+    if(Lentry!=NULL){
+        IDnode->type=Lentry->type;
+        return 2;
+    }
+    
+    if(Gentry!=NULL){
+        IDnode->type=Gentry->type;
+    return 1;
+    }
+    
+}
+
+
+//============================================================================
 //LOCAL SYMBOL TABLE FUNCTIONS
 
 Lsymbol *Ltable = NULL;
@@ -373,7 +462,33 @@ void print_Ltable(){
 
 
 //============================================================================
-//PARAM_LIST FUNCTIONS
+//PARAM_LIST AND ARG_LIST FUNCTIONS
+
+struct FuncArgs* create_arglist(struct tnode* arg){
+    FuncArgs* arglist = (FuncArgs*)malloc(sizeof(FuncArgs));
+    arglist->arguement = arg;
+    arglist->next =NULL;
+    return arglist;
+}
+
+struct FuncArgs*append_arglist(struct FuncArgs* head,struct tnode* arg){
+    FuncArgs* temp =head;
+    while(temp->next!=NULL){
+        temp=temp->next;
+    }
+    FuncArgs* new_arg = create_arglist(arg);
+    temp->next = new_arg;
+    return head;
+}
+
+void print_arglist(struct FuncArgs* head){
+    FuncArgs* temp = head;
+    while(temp!=NULL){
+        preorder(temp->arguement);
+        temp=temp->next;
+    }
+    return;
+}
 
 struct ParamList* create_param_list(int type,char* name){
     ParamList* new_param = (ParamList*)malloc(sizeof(ParamList));
@@ -404,6 +519,21 @@ void print_param_list(struct ParamList* head){
     return;
 }
 
+int verify_func_signature(struct FuncArgs* arg_list,struct ParamList* param_list){
+    struct FuncArgs* arg_scanner = arg_list;
+    struct ParamList* param_scanner = param_list;
+    while(arg_scanner!=NULL && param_scanner!=NULL){
+        int param_type = param_scanner->type;
+        int arg_type = arg_scanner->arguement->type;
+        if(param_type!=arg_type)return 0;
+        arg_scanner= arg_scanner->next;
+        param_scanner=param_scanner->next;
+    }
+    if(arg_scanner==NULL && param_scanner==NULL)return 1;
+    return 0;
+}
+
+//========================================================================================
 
 void preorder(struct tnode *root)
 {
@@ -450,6 +580,10 @@ void preorder(struct tnode *root)
     {
         printf("do-while ");
     }
+    else if(root->nodetype == FUNCTION_NODE){
+        printf("function ");
+        print_arglist(root->argList);
+    }
     else if (root->nodetype == ARRAY_NODE)
     {
         printf("array ");
@@ -474,7 +608,9 @@ void preorder(struct tnode *root)
     }
     else if (root->nodetype == IDENTIFIER_NODE)
     {
-        if (root->Gentry)
+        if(root->Lentry)
+            printf("%s ",root->Lentry->name);
+        else if (root->Gentry)
             printf("%s ", root->Gentry->name);
     }
     preorder(root->left);

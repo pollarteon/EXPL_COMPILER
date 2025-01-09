@@ -38,6 +38,10 @@ expr : expr PLUS expr  {$$ = makeOperatorNode('+',$1,$3);}
   | expr MINUS expr   {$$ = makeOperatorNode('-',$1,$3);}
   | expr MUL expr {$$ = makeOperatorNode('*',$1,$3);}
   | expr DIV expr {$$ = makeOperatorNode('/',$1,$3);}
+  | expr expr PLUS {$$ = makeOperatorNode('+',$1,$2);}
+  | expr expr MINUS {$$ = makeOperatorNode('-',$1,$2);}
+  | expr expr MUL {$$ = makeOperatorNode('*',$1,$2);}
+  | expr expr DIV {$$ = makeOperatorNode('/',$1,$2);}
   | '(' expr ')'  {$$ = $2;}
   | NUM   {$$ = $1;}
   ;

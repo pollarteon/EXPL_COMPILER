@@ -998,47 +998,51 @@ YY_RULE_SETUP
 {// look later
     variable = yytext;
     yylval.no = makeIDNode(variable);
-    Gsymbol* entry = GLookUp(variable);
-    if(entry!=NULL){
-        // printf("Got the entry from Symbol Table for identifier %s\n",entry->name);
-        (yylval.no)->Gentry = entry;
+    Gsymbol* Gentry = GLookUp(variable);
+    if(Gentry!=NULL){
+        // printf("Got the entry from Symbol Table for identifier %s\n",Gentry->name);
+        (yylval.no)->Gentry = Gentry; //setting Gentry field in the node field
         // printf("%s\n",(yylval.no->Gentry->name));
+    }
+    Lsymbol* Lentry = LLookUp(variable);
+    if(Lentry!=NULL){
+        (yylval.no)->Lentry = Lentry; //setting Lentry Field in tnode
     }
     return ID;
     }
 	YY_BREAK
 case 41:
 YY_RULE_SETUP
-#line 68 "expl.l"
+#line 72 "expl.l"
 {}
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 69 "expl.l"
+#line 73 "expl.l"
 {return *yytext;}
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 70 "expl.l"
+#line 74 "expl.l"
 {return *yytext;}
 	YY_BREAK
 case 44:
 /* rule 44 can match eol */
 YY_RULE_SETUP
-#line 71 "expl.l"
+#line 75 "expl.l"
 { line_number++;}
 	YY_BREAK
 case 45:
 YY_RULE_SETUP
-#line 72 "expl.l"
+#line 76 "expl.l"
 {printf("%s ",yytext); yyerror("unknown character\n");exit(1);}
 	YY_BREAK
 case 46:
 YY_RULE_SETUP
-#line 74 "expl.l"
+#line 78 "expl.l"
 ECHO;
 	YY_BREAK
-#line 1042 "lex.yy.c"
+#line 1046 "lex.yy.c"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -2043,7 +2047,7 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 74 "expl.l"
+#line 78 "expl.l"
 
 
 int yywrap(void) {

@@ -22,7 +22,7 @@
 #define POINTER_STR_TYPE 21
 #define ADDRESS_NODE 22
 #define DEREFERENCE_NODE 23
-#define FUNCTION_TYPE 24
+#define FUNCTION_NODE 24
 
 
 
@@ -32,6 +32,12 @@ typedef struct ParamList
     int type;
     struct ParamList* next;
 }ParamList;
+
+typedef struct FuncArgs
+{
+    struct tnode* arguement;
+    struct FuncArgs* next;
+}FuncArgs;
 
 typedef struct Gsymbol
 {
@@ -58,12 +64,13 @@ typedef struct tnode
 {
     int val;                    // For NUM nodes
     int type;                   // type of Const Nodes
-    char *varname;              // for ID nodes(initialisation)
+    char *varname;              // for ID nodes(initialisation) and for FUNCTION_NODES
     int nodetype;               // info aboout non leaf Nodes
     char *op;                   // indicates the opertor
     int size;                   //size of variable
     int row;                    //row for 1D /2D ARRAYS
     int col;                    //col for 2D Arrays
+    struct FuncArgs* argList; // for function call (can be used for checking function signatures)
     struct Gsymbol* Gentry;
     struct Lsymbol* Lentry;
     struct tnode *left, *right; // left and right branches
@@ -114,10 +121,20 @@ struct ParamList* create_param_list(int type,char* name);
 
 struct ParamList* append_param_list(struct ParamList* head,struct ParamList* new_elem);
 
+struct FuncArgs* create_arglist(struct tnode* arg);
+
+struct FuncArgs* append_arglist(struct FuncArgs* head, struct tnode* arg);
+
+int verify_func_signature(struct FuncArgs* arg_list,struct ParamList* param_list);
+
 void print_param_list(struct ParamList* head);
 
+void print_arglist(struct FuncArgs* head);
 //----------------------------------------------------------------
 
+int check_identifier(struct tnode* t);
+
+void preorder(struct tnode* t);
 // /*Make a tnode with opertor, left and right branches set*/
 // struct tnode *makeOperatorNode(char c, struct tnode *l, struct tnode *r);
 
