@@ -87,7 +87,9 @@ extern int yydebug;
     ENDDECL = 288,                 /* ENDDECL  */
     INT = 289,                     /* INT  */
     STR = 290,                     /* STR  */
-    MAIN = 291                     /* MAIN  */
+    MAIN = 291,                    /* MAIN  */
+    RETURN = 292,                  /* RETURN  */
+    BREAKPOINT = 293               /* BREAKPOINT  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -130,6 +132,8 @@ extern int yydebug;
 #define INT 289
 #define STR 290
 #define MAIN 291
+#define RETURN 292
+#define BREAKPOINT 293
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
@@ -142,7 +146,7 @@ union YYSTYPE
   struct FuncArgs* arglist;
   int integer;
 
-#line 146 "y.tab.h"
+#line 150 "y.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

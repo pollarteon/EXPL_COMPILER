@@ -23,7 +23,8 @@
 #define ADDRESS_NODE 22
 #define DEREFERENCE_NODE 23
 #define FUNCTION_NODE 24
-
+#define RETURN_NODE 25
+#define BREAKPOINT_NODE 26
 
 
 typedef struct ParamList
@@ -57,6 +58,7 @@ typedef struct Lsymbol
     char* name;
     int type;
     int binding;
+    int isArg;
     struct Lsymbol* next;
 }Lsymbol;
 
@@ -95,10 +97,11 @@ void print_GSymbolTable();
 //======================================================================================================================
 
 extern int local_binding;
+extern int param_binding;
 
 extern Lsymbol* Ltable;
 
-void L_Install(char* name,int type);
+void L_Install(char* name,int type,int isArg);
 
 struct Lsymbol* LLookUp(char* name);
 
@@ -125,6 +128,8 @@ struct FuncArgs* create_arglist(struct tnode* arg);
 
 struct FuncArgs* append_arglist(struct FuncArgs* head, struct tnode* arg);
 
+struct FuncArgs* reverse_arglist(struct FuncArgs* head);
+
 int verify_func_signature(struct FuncArgs* arg_list,struct ParamList* param_list);
 
 void print_param_list(struct ParamList* head);
@@ -133,6 +138,8 @@ void print_arglist(struct FuncArgs* head);
 //----------------------------------------------------------------
 
 int check_identifier(struct tnode* t);
+
+int returnStmt_checker(struct tnode* t,int type);
 
 void preorder(struct tnode* t);
 // /*Make a tnode with opertor, left and right branches set*/

@@ -26,6 +26,10 @@ void do_while_code_gen(struct tnode* t,FILE* target_file);
 int array_code_gen(struct tnode* t,FILE* target_file);
 int address_of_code_gen(struct tnode* t, FILE* target_file);
 int dereference_code_gen(struct tnode* t , FILE* target_file);
+
 void header_code_gen(FILE* target_file);
+void function_begin_code_gen(FILE* target_file, struct Lsymbol* Ltable);
+void function_end_code_gen(FILE* target_file,struct Lsymbol* Ltable);
+// void push_arguements(FILE* target_file,struct Lsymbol* Ltable);
 
 int evaluator(struct tnode* t);

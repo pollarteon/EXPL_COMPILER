@@ -14,7 +14,7 @@
 
 %%
 
-[L][0-9]+[:][\n] {
+([LF][0-9]+|("MAIN"))[:][\n] {
         if(first_pass){
             char *colon_pos = strchr(yytext, ':');
             if (colon_pos) {
@@ -27,7 +27,7 @@
             // print_label_address_table(label_table);
         }       
     }
-[L][0-9]+ {
+[LF][0-9]+|"MAIN" {
     if(first_pass){fprintf(first_pass_target,"%s",yytext);}
     else{
         // print_label_address_table(label_table);

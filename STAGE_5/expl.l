@@ -30,6 +30,8 @@
 "int" {return INT;}
 "str" {return STR;}
 "main" {return MAIN;}
+"return" {return RETURN;}
+"breakpoint" {return BREAKPOINT;}
 "<" {return LT;}
 ">" {return GT;}
 "<=" {return LTE;}

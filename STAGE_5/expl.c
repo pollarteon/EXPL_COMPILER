@@ -177,6 +177,13 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
         }
         else // assignment operator
         {
+            // struct Lsymbol* left_Lentry = l->Lentry;
+            // if(left_Lentry!=NULL){
+            //     if(left_Lentry->isArg){
+            //         printf("ERROR cannot assign value to an arguement : %s\n",left_Lentry->name);
+            //         exit(1);
+            //     }
+            // }
             if(l->nodetype ==  ADDRESS_NODE){
                 printf("ERROR: & is an lval operator\n");
                 exit(1);
@@ -243,6 +250,17 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
             temp->type = index_Lentry->type;
             else
             temp->type = index_Gentry->type;
+            
+        }
+        else if(r->nodetype==OPERATOR_NODE){
+            temp->type = r->type;
+        }
+        else if(r->nodetype==FUNCTION_NODE){
+            struct Gsymbol* Gentry = r->left->Gentry;
+            if(Gentry->type==STRING_TYPE){
+                printf("ERROR: CANNOT INDEX ARRAY USING A NON_INTEGER TYPE: %s\n",Gentry->name);
+                exit(1);
+            }
         }
         else if (r->nodetype == _2D_ARRAY_NODE)
         {
@@ -256,6 +274,17 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
                     printf("ERROR: INDEX OUT OF BOUNDS\n");
                     exit(1);
                 }
+            }
+            else if(_2D_node->left->nodetype ==ARRAY_NODE){
+                struct Gsymbol* index_Gentry = _2D_node->left->left->Gentry;
+                if(index_Gentry->type !=INTEGER_TYPE){
+                    printf("ERROR: INDEXING BY A NON_INTEGER VALUE\n");
+                    exit(1);
+                }
+                temp->type=Gentry->type;
+            }
+            else if(_2D_node->left->nodetype == OPERATOR_NODE){
+                temp->type=_2D_node->left->type;
             }
             else
             {
@@ -283,6 +312,17 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
                     printf("ERROR: INDEX OUT OF BOUNDS\n");
                     exit(1);
                 }
+            }
+            else if(_2D_node->right->nodetype ==ARRAY_NODE){
+                struct Gsymbol* index_Gentry = _2D_node->right->left->Gentry;
+                if(index_Gentry->type !=INTEGER_TYPE){
+                    printf("ERROR: INDEXING BY A NON_INTEGER VALUE\n");
+                    exit(1);
+                }
+                temp->type=Gentry->type;
+            }
+            else if(_2D_node->right->nodetype == OPERATOR_NODE){
+                temp->type=_2D_node->right->type;
             }
             else
             {
@@ -376,7 +416,7 @@ void print_GSymbolTable()
     printf("\n\n");
 };
 //============================================================================
-//IDENTIFIER CHECKING AND SETTING UP
+//IDENTIFIER CHECKING AND SETTING UP / ADDITIONAL SEMANTIC CHECKING FUNCTIONS
 
 int check_identifier(struct tnode* IDnode){
     // printf("%s\n",IDnode->Gentry);
@@ -394,8 +434,22 @@ int check_identifier(struct tnode* IDnode){
     if(Gentry!=NULL){
         IDnode->type=Gentry->type;
     return 1;
+    } 
+}
+
+int returnStmt_checker(struct tnode* t,int type){
+    if(t==NULL){
+        return 1;
     }
-    
+    if(t->nodetype==RETURN_NODE){
+        int expression_type = t->left->type;
+        if(expression_type!=type){
+            printf("ERROR: RETURN TYPE MISMATCH WITH FUNCTION RETURN TYPE: \n");
+            exit(1);
+        }
+    }
+    returnStmt_checker(t->left,type);
+    returnStmt_checker(t->right,type);
 }
 
 
@@ -404,13 +458,18 @@ int check_identifier(struct tnode* IDnode){
 
 Lsymbol *Ltable = NULL;
 int local_binding=1;
+int param_binding=1;
 
-void L_Install(char* name,int type){
+void L_Install(char* name,int type,int isArg){
     struct Lsymbol* Lentry = (Lsymbol*)malloc(sizeof(Lsymbol));
     Lentry->name = strdup(name);
     Lentry->type=type;
     Lentry->next=NULL;
+    if(!isArg)
     Lentry->binding=local_binding++;
+    else
+    Lentry->binding=param_binding++;
+    Lentry->isArg =isArg;
     struct Lsymbol* temp = Ltable;
     if(temp==NULL){
         Ltable = Lentry;
@@ -479,6 +538,19 @@ struct FuncArgs*append_arglist(struct FuncArgs* head,struct tnode* arg){
     FuncArgs* new_arg = create_arglist(arg);
     temp->next = new_arg;
     return head;
+}
+struct FuncArgs* reverse_arglist(struct FuncArgs* head) {
+    struct FuncArgs* prev = NULL;
+    struct FuncArgs* current = head;
+    struct FuncArgs* next = NULL;
+
+    while (current != NULL) {
+        next = current->next;  
+        current->next = prev; 
+        prev = current;       
+        current = next;        
+    }
+    return prev;  
 }
 
 void print_arglist(struct FuncArgs* head){
@@ -583,6 +655,12 @@ void preorder(struct tnode *root)
     else if(root->nodetype == FUNCTION_NODE){
         printf("function ");
         print_arglist(root->argList);
+    }
+    else if(root->nodetype==RETURN_NODE){
+        printf("return ");
+    }
+    else if(root->nodetype==BREAKPOINT_NODE){
+        printf("breakpoint ");
     }
     else if (root->nodetype == ARRAY_NODE)
     {

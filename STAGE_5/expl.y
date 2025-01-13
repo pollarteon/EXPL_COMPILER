@@ -18,14 +18,14 @@
 }
 %type <no> expr NUM STRING program END ID Slist Stmt
 %type <no> InputStmt OutputStmt AsgStmt WhileStmt Ifstmt 
-%type <no> BreakStmt ContinueStmt DoWhileStmt 
+%type <no> BreakStmt ContinueStmt DoWhileStmt ReturnStmt BreakpointStmt
 %type <no> Identifier index
 %type <no>  FdefBlock MainBlock Gdecl GidList Gid
 %type <no> Fdef  LdeclBlock Body LdecList Ldecl IdList Lid
 %type <integer> Type
 %type <plist> ParamList Param
 %type <arglist> ArgList
-%token NUM STRING PLUS MINUS MUL DIV MOD END PBEGIN READ WRITE ID IF ELSE THEN ENDIF ENDWHILE WHILE OR AND LT GT LTE GTE EQUALS NOTEQUALS DO BREAK CONTINUE DECL ENDDECL INT STR MAIN
+%token NUM STRING PLUS MINUS MUL DIV MOD END PBEGIN READ WRITE ID IF ELSE THEN ENDIF ENDWHILE WHILE OR AND LT GT LTE GTE EQUALS NOTEQUALS DO BREAK CONTINUE DECL ENDDECL INT STR MAIN RETURN BREAKPOINT
 %left OR
 %left AND
 %left EQUALS NOTEQUALS
@@ -45,7 +45,7 @@ program : GDeclBlock FdefBlock MainBlock{printf("Program finished\n");exit(1);}
 /// GLOBAL DECLARATIONS SYNTAX
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-GDeclBlock : DECL GdeclList ENDDECL {print_GSymbolTable();}
+GDeclBlock : DECL GdeclList ENDDECL {print_GSymbolTable();L_cleanup();local_binding=1;param_binding=1;}
 | DECL ENDDECL {} ;
 
 GdeclList : GdeclList Gdecl {} | Gdecl {};
@@ -118,23 +118,27 @@ FdefBlock : FdefBlock Fdef | Fdef;
 Fdef : Type ID '(' ParamList ')' '{' LdeclBlock Body '}' {
   int definition_type = $1;
   struct ParamList* defintion_param_list = $4;
-  struct Gsymbol* Gentry = GLookUp($2->varname);
+  struct Gsymbol* Gentry = $2->Gentry;
   if(Gentry==NULL){
     printf("ERROR: FUNCTION NOT DECLARED %s\n",$2->varname);
     return -1;
   }
   //checking param equivalence
-  if(Gentry->param_list!=NULL){
-    struct ParamList* temp1 = defintion_param_list;
-    struct ParamList* temp2 = Gentry->param_list;
+  struct ParamList* temp1 = defintion_param_list;
+  struct ParamList* temp2 = Gentry->param_list;
+  while(temp1!=NULL && temp2!=NULL){
     if(strcmp(temp1->name,temp2->name)!=0 || temp1->type!=temp2->type){
       printf("ERROR: FUNCTION MISMATCH %s\n",Gentry->name);
       return -1;
     }
-  }else{
-    printf("ERROR: FUNCTION DECLARATION UNMATCHED\n");
+    temp1=temp1->next;
+    temp2=temp2->next;
+  }
+  if(temp1!=NULL || temp2!=NULL){
+    printf("ERROR: FUNCTION DECLARATION UNMATCHED: %s\n",Gentry->name);
     return -1;
   }
+  //Generating Header and Cleaning Up Local Symbol Table
   FILE* target_file = fopen("code.xsm","a");
   if(!begin_flag){
       fclose(target_file);
@@ -146,9 +150,13 @@ Fdef : Type ID '(' ParamList ')' '{' LdeclBlock Body '}' {
     printf("Preorder of Syntax Tree : ");
     preorder($8);
     printf("\n\n");
+    returnStmt_checker($8,$1); //return statement checker..............
     fprintf(target_file,"F%d:\n",Gentry->flabel);
+    function_begin_code_gen(target_file,Ltable);
     code_gen($8,target_file);
     L_cleanup();
+    local_binding=1;
+    param_binding=1;
     fclose(target_file);
 }
 | Type ID '(' ')' '{' LdeclBlock Body '}'{
@@ -162,8 +170,16 @@ Fdef : Type ID '(' ParamList ')' '{' LdeclBlock Body '}' {
   if(Gentry->param_list==NULL){
     FILE* target_file = fopen("code.xsm","w");
     print_Ltable();
+    printf("Preorder of Syntax Tree : ");
+    preorder($7);
+    printf("\n\n");
+    returnStmt_checker($7,$1); //return statement checker..............
+    fprintf(target_file,"F%d:\n",Gentry->flabel);
+    function_begin_code_gen(target_file,Ltable);
     code_gen($7,target_file);
     L_cleanup();
+    local_binding=1;
+    param_binding=1;
   }else{
     printf("ERROR: FUNCTION DECLARATION UNMATCHED\n");
     return -1;
@@ -181,6 +197,7 @@ ParamList : ParamList ',' Param {
 };
 
 Param : Type ID {
+  L_Install($2->varname,$1,1);
   $$ = create_param_list($1,$2->varname);
 }
 
@@ -200,9 +217,12 @@ MainBlock : INT MAIN '(' ')' '{' LdeclBlock Body '}' {
     printf("Preorder of Syntax Tree : ");
     preorder($7);
     printf("\n\n");
+    returnStmt_checker($7,INTEGER_TYPE);
     fprintf(target_file,"MAIN:\n");
+    function_begin_code_gen(target_file,Ltable);
     int result_reg =code_gen($7,target_file);
     L_cleanup();
+    local_binding=1;
     fclose(target_file);
 }
 
@@ -211,7 +231,9 @@ MainBlock : INT MAIN '(' ')' '{' LdeclBlock Body '}' {
 //LOCAL DECLARATION BLOCK
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-LdeclBlock : DECL LdecList ENDDECL {} | DECL ENDDECL {};
+LdeclBlock : DECL LdecList ENDDECL {local_binding=1;} 
+| DECL ENDDECL {local_binding=1;}
+| /* empty */{};
 
 LdecList : LdecList  Ldecl {} | Ldecl {};
 
@@ -224,14 +246,14 @@ Ldecl : Type IdList ';' {
     if(Lentry==NULL){
       if(varList->type==POINTER_TYPE){
         if(declaration_type==INTEGER_TYPE){
-          L_Install(varList->varname,POINTER_INT_TYPE);
+          L_Install(varList->varname,POINTER_INT_TYPE,0);
         }
         if(declaration_type==STRING_TYPE){
-          L_Install(varList->varname,POINTER_STR_TYPE);
+          L_Install(varList->varname,POINTER_STR_TYPE,0);
         }
       }
       else
-      L_Install(varList->varname,declaration_type);
+      L_Install(varList->varname,declaration_type,0);
     }
     else{
       printf("ERROR: REDECLARATION OF LOCAL VARIABLE IN %s\n",Lentry->name);
@@ -261,7 +283,8 @@ Lid : ID{
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-Body :PBEGIN Slist END {$$ = $2;};
+Body :PBEGIN Slist ReturnStmt END {$$ = createNode(-1,1,1,-1,NULL,NULL,CONNECTOR_NODE,$2,$3);};
+| PBEGIN Slist END {$$=$2;}
 
 Type : INT {$$ = INTEGER_TYPE;} 
 | STR {$$ = STRING_TYPE;}
@@ -269,7 +292,7 @@ Type : INT {$$ = INTEGER_TYPE;}
 Slist : Slist Stmt {
   $$=createNode(-1,1,1,-1,NULL,NULL,CONNECTOR_NODE,$1,$2);
 }
-| Stmt {$$=$1;};
+| Stmt {$$=$1;}
 ;
 
 Stmt : InputStmt {$$=$1;} 
@@ -280,6 +303,9 @@ Stmt : InputStmt {$$=$1;}
 |DoWhileStmt {$$=$1;}
 |BreakStmt {$$=$1;}
 |ContinueStmt {$$=$1;}
+|ReturnStmt {$$=$1;}
+|BreakpointStmt {$$=$1;}
+
 ;
 
 InputStmt : READ '(' Identifier ')' ';' {
@@ -296,6 +322,8 @@ AsgStmt : Identifier '=' expr ';' {
 
 BreakStmt : BREAK ';' {$$=makeNonLeafNode(NULL,NULL,BREAK_NODE,"_");}
 
+BreakpointStmt : BREAKPOINT ';' {$$=makeNonLeafNode(NULL,NULL,BREAKPOINT_NODE,"_");}
+
 ContinueStmt : CONTINUE ';' {$$=makeNonLeafNode(NULL,NULL,CONTINUE_NODE,"_");}
 
 Ifstmt : IF '(' expr ')' THEN Slist ELSE Slist ENDIF ';' {
@@ -308,6 +336,8 @@ Ifstmt : IF '(' expr ')' THEN Slist ELSE Slist ENDIF ';' {
 WhileStmt : WHILE '(' expr ')' DO Slist ENDWHILE ';' {$$ = makeNonLeafNode($3,$6,WHILE_NODE,"_");}
 
 DoWhileStmt : DO Slist WHILE '(' expr ')' ';' {$$ = makeNonLeafNode($5,$2,DO_WHILE_NODE,"_");}
+
+ReturnStmt : RETURN expr ';' {$$ = makeNonLeafNode($2,NULL,RETURN_NODE,"_");}
 
 expr : expr PLUS expr  {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"+");}
   | expr MINUS expr   {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"-");}
@@ -323,7 +353,7 @@ expr : expr PLUS expr  {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"+");}
   | expr AND expr {$$=makeNonLeafNode($1,$3,OPERATOR_NODE,"&&");}
   | expr OR expr {$$=makeNonLeafNode($1,$3,OPERATOR_NODE,"||");}
   | ID '(' ')' {
-    struct tnode* function_node = makeNonLeafNode(NULL,NULL,FUNCTION_NODE,"_");
+    struct tnode* function_node = makeNonLeafNode($1,NULL,FUNCTION_NODE,"_");
     function_node->varname = strdup($1->varname);
     struct Gsymbol* Gentry = $1->Gentry;
     if(Gentry==NULL){
@@ -331,7 +361,7 @@ expr : expr PLUS expr  {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"+");}
       exit(1);
     }
     struct ParamList* param_list = Gentry->param_list;
-    struct ArgList* arg_list = NULL;
+    struct FuncArgs* arg_list = NULL;
     if(!verify_func_signature(arg_list,param_list)){
       printf("ERROR:FUNCTION SIGNATURE MISMATCH: %s\n",$1->varname);
       exit(1);
@@ -341,7 +371,7 @@ expr : expr PLUS expr  {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"+");}
     $$ = function_node;
   }
   | ID '(' ArgList ')'{
-    struct tnode* function_node = makeNonLeafNode(NULL,NULL,FUNCTION_NODE,"_");
+    struct tnode* function_node = makeNonLeafNode($1,NULL,FUNCTION_NODE,"_");
     function_node->argList = $3;
     function_node->varname = strdup($1->varname);
     struct Gsymbol* Gentry = $1->Gentry;
@@ -350,7 +380,7 @@ expr : expr PLUS expr  {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"+");}
       exit(1);
     }
     struct ParamList* param_list = Gentry->param_list;
-    struct ArgList* arg_list = $3;
+    struct FuncArgs* arg_list = $3;
     if(verify_func_signature(arg_list,param_list)==0){
       printf("ERROR:FUNCTION SIGNATURE MISMATCH: %s\n",$1->varname);
       exit(1);
@@ -389,7 +419,7 @@ Identifier : ID {
 | ID '[' index ']' {
     struct tnode* IDNode = $1;
     int table_type = check_identifier(IDNode);
-    if (table_type==1) {
+    if (table_type==1) {//GLOBAL variable
         // Array-specific checks
         if (IDNode->Gentry->col != -1) {
             printf("ERROR: ACCESSING A 2D-ARRAY VARIABLE %s\n", IDNode->varname);
@@ -401,7 +431,7 @@ Identifier : ID {
 | ID '[' index ']' '[' index ']' {
     struct tnode* IDNode = $1;
     int table_type = check_identifier(IDNode);
-    if (table_type==1) {
+    if (table_type==1) {//GLOBAL variable
         if (IDNode->Gentry->col == -1) {
             printf("ERROR: THIS IS NOT A 2-D ARRAY %s\n", IDNode->varname);
             exit(1);
@@ -413,7 +443,7 @@ Identifier : ID {
 | MUL ID {
     struct tnode* IDNode = $2;
     int table_type = check_identifier(IDNode);
-    if (table_type == 1) {
+    if (table_type == 1) {//GLOBAL variable
         // Pointer dereferencing checks
         if (IDNode->Gentry->type != POINTER_INT_TYPE && IDNode->Gentry->type != POINTER_STR_TYPE) {
             printf("ERROR: DEREFERENCING A NON-POINTER VARIABLE %s\n", IDNode->Gentry->name);
@@ -430,7 +460,7 @@ Identifier : ID {
     struct tnode* IDNode = $2;
     int table_type = check_identifier(IDNode);
 
-    if (table_type == 1) {
+    if (table_type == 1) {//GLOBAL variable
         struct tnode* addressNode = makeNonLeafNode(IDNode, NULL, ADDRESS_NODE, "_");
         addressNode->type = (IDNode->Gentry->type == INTEGER_TYPE || IDNode->Gentry->type == POINTER_INT_TYPE)
                                 ? POINTER_INT_TYPE
@@ -440,8 +470,7 @@ Identifier : ID {
 }
 ;
 
-index : NUM {$$=$1;}
-  | Identifier {$$=$1;}
+index : expr {$$=$1;}
 
 %%
 
