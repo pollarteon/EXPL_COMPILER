@@ -200,6 +200,17 @@ Param : Type ID {
   L_Install($2->varname,$1,1);
   $$ = create_param_list($1,$2->varname);
 }
+| Type MUL ID{
+  int declaration_type = $1;
+  int Lentry_type;
+  if(declaration_type==INTEGER_TYPE){
+    Lentry_type = POINTER_INT_TYPE;
+  }else{
+    Lentry_type = POINTER_STR_TYPE;
+  }
+  L_Install($3->varname,Lentry_type,1);
+  $$ = create_param_list(Lentry_type,$3->varname);
+}
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //MAIN BLOCK SYNTAX
@@ -450,6 +461,12 @@ Identifier : ID {
             exit(1);
         }
         IDNode->type = (IDNode->Gentry->type == POINTER_INT_TYPE) ? INTEGER_TYPE : STRING_TYPE;
+    }else{//LOCAL variable
+      if (IDNode->Lentry->type != POINTER_INT_TYPE && IDNode->Lentry->type != POINTER_STR_TYPE) {
+            printf("ERROR: DEREFERENCING A NON-POINTER VARIABLE %s\n", IDNode->Lentry->name);
+            exit(1);
+        }
+      IDNode->type = (IDNode->Lentry->type == POINTER_INT_TYPE) ? INTEGER_TYPE : STRING_TYPE;
     }
 
     struct tnode* dereference_node = makeNonLeafNode(IDNode, NULL, DEREFERENCE_NODE, "_");
@@ -459,10 +476,20 @@ Identifier : ID {
 | '&' Identifier {
     struct tnode* IDNode = $2;
     int table_type = check_identifier(IDNode);
-
     if (table_type == 1) {//GLOBAL variable
         struct tnode* addressNode = makeNonLeafNode(IDNode, NULL, ADDRESS_NODE, "_");
-        addressNode->type = (IDNode->Gentry->type == INTEGER_TYPE || IDNode->Gentry->type == POINTER_INT_TYPE)
+        struct Gsymbol* Gentry = IDNode->Gentry;
+        if(IDNode->nodetype==ARRAY_NODE){
+          Gentry=IDNode->left->Gentry;
+          printf("%d\n",IDNode->right->nodetype);
+        }
+        addressNode->type = (Gentry->type == INTEGER_TYPE || Gentry->type == POINTER_INT_TYPE)
+                                ? POINTER_INT_TYPE
+                                : POINTER_STR_TYPE;
+        $$ = addressNode;
+    }else{//LOCAL variable
+      struct tnode* addressNode = makeNonLeafNode(IDNode, NULL, ADDRESS_NODE, "_");
+        addressNode->type = (IDNode->Lentry->type == INTEGER_TYPE || IDNode->Lentry->type == POINTER_INT_TYPE)
                                 ? POINTER_INT_TYPE
                                 : POINTER_STR_TYPE;
         $$ = addressNode;

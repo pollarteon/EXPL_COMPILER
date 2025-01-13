@@ -329,8 +329,9 @@ int address_of_code_gen(struct tnode *t, FILE *target_file)
     struct tnode *identifier_node = t->left;
     if (identifier_node->nodetype == ARRAY_NODE)
     {
-        if (identifier_node->nodetype != _2D_ARRAY_NODE)
+        if (identifier_node->right->nodetype != _2D_ARRAY_NODE)
         {
+            printf("HELLO\n");
             int index_reg;
             int reg_result = getReg();
             index_reg = code_gen(identifier_node->right, target_file);
@@ -345,8 +346,8 @@ int address_of_code_gen(struct tnode *t, FILE *target_file)
             int reg_result = getReg();
             int row_index_reg = code_gen(identifier_node->right->left, target_file);
             int col_index_reg = code_gen(identifier_node->right->right, target_file);
-            // printf("%d\n",row_index_reg);
-            // printf("%d\n",col_index_reg);
+            printf("%d\n",row_index_reg);
+            printf("%d\n",col_index_reg);
             int storage_location = identifier_node->left->Gentry->binding;
             int col = identifier_node->left->Gentry->col;
             fprintf(target_file, "MOV R%d, %d\n", reg_result, storage_location);
@@ -358,9 +359,29 @@ int address_of_code_gen(struct tnode *t, FILE *target_file)
             return reg_result;
         }
     }
-
-    int storage_location = t->left->Gentry->binding;
     int reg_result = getReg();
+    struct Gsymbol* Gentry = t->left->Gentry;
+    struct Lsymbol* Lentry = t->left->Lentry;
+    if(Lentry){
+        if(Lentry->isArg){
+            int address_reg = getReg();
+            fprintf(target_file,"MOV R%d, BP\n",address_reg);
+            fprintf(target_file,"SUB R%d, %d\n",address_reg,2+Lentry->binding);
+            fprintf(target_file,"MOV R%d, R%d\n",reg_result,address_reg);
+            freeReg();
+            return reg_result;
+        }
+        else{
+            int address_reg = getReg();
+            fprintf(target_file,"MOV R%d, BP\n",address_reg);
+            fprintf(target_file,"ADD R%d, %d\n",address_reg,Lentry->binding);
+            fprintf(target_file,"MOV R%d, R%d\n",reg_result,address_reg);
+            freeReg();
+            return reg_result;
+        }
+    }
+    int storage_location = t->left->Gentry->binding;
+    
     // printf("location : %d\n",storage_location);
     fprintf(target_file, "MOV R%d, %d\n", reg_result, storage_location);
     return reg_result;

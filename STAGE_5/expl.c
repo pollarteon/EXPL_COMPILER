@@ -422,6 +422,10 @@ int check_identifier(struct tnode* IDnode){
     // printf("%s\n",IDnode->Gentry);
     struct Gsymbol* Gentry = IDnode->Gentry;
     struct Lsymbol* Lentry = IDnode->Lentry;
+    if(IDnode->nodetype==ARRAY_NODE){
+        Gentry=IDnode->left->Gentry;
+        Lentry=IDnode->left->Lentry;
+    }
     if(Lentry==NULL && Gentry==NULL){      
             printf("ERROR: variable not declared: %s\n",IDnode->varname);
             exit(1);
