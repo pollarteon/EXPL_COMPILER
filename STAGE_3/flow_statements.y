@@ -14,8 +14,8 @@
  struct tnode *no;
 
 }
-%type <no> expr NUM program END ID Slist Stmt InputStmt OutputStmt AsgStmt WhileStmt Ifstmt BreakStmt ContinueStmt DoWhileStmt
-%token NUM PLUS MINUS MUL DIV END PBEGIN READ WRITE ID IF ELSE THEN ENDIF ENDWHILE WHILE OR AND LT GT LTE GTE EQUALS NOTEQUALS DO BREAK CONTINUE
+%type <no> expr NUM program END ID Slist Stmt InputStmt OutputStmt AsgStmt WhileStmt Ifstmt BreakStmt ContinueStmt DoWhileStmt RepeatUntilStmt
+%token NUM PLUS MINUS MUL DIV END PBEGIN READ WRITE ID IF ELSE THEN ENDIF ENDWHILE WHILE OR AND LT GT LTE GTE EQUALS NOTEQUALS DO BREAK CONTINUE REPEAT UNTIL
 %left OR
 %left AND
 %left EQUALS NOTEQUALS
@@ -34,7 +34,7 @@ program : PBEGIN Slist END ';'{
     printf("Preorder of Syntax Tree : ");
     preorder($2);
     printf("\n\n");
-    // evaluator($2);
+    evaluator($2);
     int result_reg =code_gen($2,target_file);
     // store_stack(result_reg,target_file);
     exit(1);
@@ -52,6 +52,7 @@ Stmt : InputStmt {$$=$1;}
 |Ifstmt {$$=$1;}
 |WhileStmt {$$=$1;}
 |DoWhileStmt {$$=$1;}
+|RepeatUntilStmt {$$=$1;}
 |BreakStmt {$$=$1;}
 |ContinueStmt {$$=$1;}
 ;
@@ -76,6 +77,8 @@ Ifstmt : IF '(' expr ')' THEN Slist ELSE Slist ENDIF ';' {
 WhileStmt : WHILE '(' expr ')' DO Slist ENDWHILE ';' {$$ = makeNonLeafNode($3,$6,WHILE_NODE,"_");}
 
 DoWhileStmt : DO Slist WHILE '(' expr ')' ';' {$$ = makeNonLeafNode($5,$2,DO_WHILE_NODE,"_");}
+
+RepeatUntilStmt : REPEAT Slist UNTIL '(' expr ')' ';' {$$=makeNonLeafNode($5,$2,REPEAT_UNTIL_NODE,"_");}
 
 expr : expr PLUS expr  {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"+");}
   | expr MINUS expr   {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"-");}

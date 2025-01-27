@@ -320,7 +320,8 @@ void print_GSymbolTable()
 
 // evaluator implementation  .....
 
-int stack_storage[26] = {0};
+int stack_storage[1024] = {0};
+
 
 int evaluator(struct tnode *t)
 {
@@ -328,9 +329,29 @@ int evaluator(struct tnode *t)
         return -1;
     if (t->nodetype == READ_NODE)
     {
-        char variable = *(t->left->varname);
-        scanf("%d", &stack_storage[variable - 'a']);
-        return -1;
+        if(t->left->nodetype==IDENTIFIER_NODE){
+            struct Gsymbol* Gentry = t->left->Gentry;
+            // printf("%s\n",Gentry->name);
+            // printf("%d]\n",Gentry->binding-4096);
+            scanf("%d", &stack_storage[Gentry->binding-4096]);
+            return -1;
+        }
+        else if(t->left->nodetype==ARRAY_NODE){
+            // printf("Array\n");
+            struct tnode* array_node = t->left;
+            struct Gsymbol* Gentry = array_node->left->Gentry;
+            int address = Gentry->binding;
+            if(array_node->right->nodetype!=_2D_ARRAY_NODE){
+                address += evaluator(array_node->right);
+            }
+            else{
+                struct tnode* _2D_array_node = array_node->right;
+                address+= evaluator(_2D_array_node->left)*(Gentry->col);
+                address+= evaluator(_2D_array_node->right);
+            }
+            scanf("%d",&stack_storage[(address)-4096]);
+            return -1;
+        }
     }
     else if (t->nodetype == WRITE_NODE)
     {
@@ -343,22 +364,40 @@ int evaluator(struct tnode *t)
     }
     else if (t->nodetype == IDENTIFIER_NODE)
     {
-        char identifer = *(t->varname);
-        // printf("%d\n\n",identifer);
-        return stack_storage[identifer - 'a'];
+        struct Gsymbol* Gentry = t->Gentry;
+        return stack_storage[Gentry->binding-4096];
+    }
+    else if (t->nodetype ==ARRAY_NODE){
+        struct Gsymbol* Gentry = t->left->Gentry;
+        int address = Gentry->binding;
+        if(t->right->nodetype!=_2D_ARRAY_NODE){
+            address += evaluator(t->right);
+            return stack_storage[address-4096];
+        }
+        else{
+            struct tnode* _2D_array_node = t->right;
+            address+= evaluator(_2D_array_node->left)*(Gentry->col);
+            address+= evaluator(_2D_array_node->right);
+            return stack_storage[address-4096];
+        }
     }
     else if (t->nodetype == IF_NODE)
-    {
+    {   
+        int isbreak;
         if (evaluator(t->left))
         {
             if (t->right->nodetype == ELSE_NODE)
             {
-                evaluator(t->right->left);
+                isbreak =evaluator(t->right->left);
+                if(isbreak==-2) return -2;
+                if(isbreak==-3) return -3;
                 return -1;
             }
             else
             {
-                evaluator(t->right);
+                isbreak =evaluator(t->right);
+                if(isbreak==-2) return -2;
+                if(isbreak==-3) return -3;
                 return -1;
             }
         }
@@ -366,7 +405,9 @@ int evaluator(struct tnode *t)
         {
             if (t->right->nodetype == ELSE_NODE)
             {
-                evaluator(t->right->right);
+                isbreak =evaluator(t->right->right);
+                if(isbreak==-2) return -2;
+                if(isbreak==-3) return -3;
                 return -1;
             }
             else
@@ -375,18 +416,45 @@ int evaluator(struct tnode *t)
             }
         }
     }
-    else if (t->nodetype == WHILE_NODE)
-    {
-        if (evaluator(t->left))
-        {
-            evaluator(t->right);
+    else if(t->nodetype == WHILE_NODE){
+        if(evaluator(t->left)){
+            int isbreak =evaluator(t->right);
+            if(isbreak==-2)return -1;
             evaluator(t);
             return -1;
-        }
-        else
-        {
+        }else{
             return -1;
         }
+    }
+    else if(t->nodetype==REPEAT_UNTIL_NODE){
+        int isbreak =evaluator(t->right);
+        if(isbreak==-2){
+            return -1;
+        }
+        if(evaluator(t->left)==0){
+            evaluator(t);
+            return -1;
+        }else{
+            return -1;
+        }
+    }
+    else if(t->nodetype==DO_WHILE_NODE){
+        int isbreak =evaluator(t->right);
+        if(isbreak==-2){
+            return -1;
+        }
+        if(evaluator(t->left)){
+            evaluator(t);
+            return -1;
+        }else{
+            return -1;
+        }
+    }
+    else if(t->nodetype==BREAK_NODE){
+        return -2;
+    }
+    else if(t->nodetype==CONTINUE_NODE){
+        return -3;
     }
     else if (t->nodetype == OPERATOR_NODE)
     {
@@ -394,9 +462,27 @@ int evaluator(struct tnode *t)
         if (strcmp(t->op, "=") == 0)
         {
             int result_val = evaluator(t->right);
-            char identifer = *(t->left->varname);
-            stack_storage[identifer - 'a'] = result_val;
-            return -1;
+            if(t->left->nodetype==IDENTIFIER_NODE){         
+                struct Gsymbol* Gentry = t->left->Gentry;
+                stack_storage[Gentry->binding-4096] = result_val;
+                return -1;
+            }
+            if(t->left->nodetype ==ARRAY_NODE){
+                struct Gsymbol* Gentry = t->left->left->Gentry;
+                int address = Gentry->binding;
+                if(t->left->right->nodetype!=_2D_ARRAY_NODE){
+                    address += evaluator(t->left->right);
+                    stack_storage[address-4096]= result_val;
+                    return -1;
+                }
+                else{
+                    struct tnode* _2D_array_node = t->left->right;
+                    address+= evaluator(_2D_array_node->left)*(Gentry->col);
+                    address+= evaluator(_2D_array_node->right);
+                    stack_storage[address-4096]= result_val;
+                    return -1;
+                }
+            }
         }
 
         int left_val = evaluator(t->left);
@@ -460,13 +546,18 @@ int evaluator(struct tnode *t)
     }
     else
     {
-        evaluator(t->left);
-        evaluator(t->right);
+        int leftval = evaluator(t->left);
+        if(leftval==-2) return -2; //if left subtree is a break/continue node
+        else if(leftval==-3) return -3;
+        int rightval =evaluator(t->right);
+        if(rightval==-2)return -2; //if right subtree is a break/continue node
+        else if(rightval==-3)return -3;
         return -1;
     }
 
     return -1;
 }
+
 
 void preorder(struct tnode *root)
 {

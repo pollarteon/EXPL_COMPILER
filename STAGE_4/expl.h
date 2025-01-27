@@ -22,7 +22,7 @@
 #define POINTER_STR_TYPE 21
 #define ADDRESS_NODE 22
 #define DEREFERENCE_NODE 23
-
+#define REPEAT_UNTIL_NODE 24
 
 
 
@@ -72,5 +72,5 @@ struct tnode *makeIDNode(char *varname);
 struct tnode *makeOperatorNode(char c, struct tnode *l, struct tnode *r);
 
 /*To evaluate an expression tree*/
-extern int stack_storage[26];
+extern int stack_storage[1024];
 int evaluator(struct tnode *t);

@@ -176,6 +176,20 @@ void do_while_code_gen(struct tnode* t,FILE* target_file){
     return;
 }
 
+void repeat_until_code_gen(struct tnode* t,FILE* target_file){
+    int loop_label = getLabel();
+    int exit_label = getLabel();
+    label_stack = push_LabelStack(label_stack,exit_label,loop_label);
+    fprintf(target_file,"L%d:\n",loop_label);
+    code_gen(t->right,target_file);
+    int guard_reg = code_gen(t->left,target_file);
+    fprintf(target_file,"JNZ R%d, L%d\n",guard_reg,exit_label);
+    freeReg();
+    fprintf(target_file,"JMP L%d\n",loop_label);
+    fprintf(target_file,"L%d:\n",exit_label);
+    pop_LabelStack(label_stack);
+    return;
+}
 
 
 
@@ -215,6 +229,10 @@ int code_gen(struct tnode *t, FILE *target_file)
     }
     else if(t->nodetype==DO_WHILE_NODE){
         do_while_code_gen(t,target_file);
+        return -1;
+    }
+    else if(t->nodetype==REPEAT_UNTIL_NODE){
+        repeat_until_code_gen(t,target_file);
         return -1;
     }
     else if(t->nodetype==BREAK_NODE){

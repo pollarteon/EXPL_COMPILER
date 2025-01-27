@@ -17,6 +17,8 @@
     return ID;
     }
 "begin" {return PBEGIN;}
+"repeat" {return REPEAT;}
+"until" {return UNTIL;}
 "end" {return END;}
 "read" {return READ;}
 "write" {return WRITE;}

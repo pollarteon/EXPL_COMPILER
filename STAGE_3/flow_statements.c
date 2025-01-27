@@ -74,7 +74,7 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
             exit(1);
         }
     }
-    else if (temp->nodetype == IF_NODE || temp->nodetype == WHILE_NODE || temp->nodetype==DO_WHILE_NODE)
+    else if (temp->nodetype == IF_NODE || temp->nodetype == WHILE_NODE || temp->nodetype==DO_WHILE_NODE || temp->nodetype==REPEAT_UNTIL_NODE)
     {
         if (l->type != BOOLEAN_TYPE)
         {
@@ -118,17 +118,22 @@ int evaluator(struct tnode *t)
         return stack_storage[identifer - 'a'];
     }
     else if (t->nodetype == IF_NODE)
-    {
+    {   
+        int isbreak;
         if (evaluator(t->left))
         {
             if (t->right->nodetype == ELSE_NODE)
             {
-                evaluator(t->right->left);
+                isbreak =evaluator(t->right->left);
+                if(isbreak==-2) return -2;
+                if(isbreak==-3) return -3;
                 return -1;
             }
             else
             {
-                evaluator(t->right);
+                isbreak =evaluator(t->right);
+                if(isbreak==-2) return -2;
+                if(isbreak==-3) return -3;
                 return -1;
             }
         }
@@ -136,7 +141,9 @@ int evaluator(struct tnode *t)
         {
             if (t->right->nodetype == ELSE_NODE)
             {
-                evaluator(t->right->right);
+                isbreak =evaluator(t->right->right);
+                if(isbreak==-2) return -2;
+                if(isbreak==-3) return -3;
                 return -1;
             }
             else
@@ -147,12 +154,43 @@ int evaluator(struct tnode *t)
     }
     else if(t->nodetype == WHILE_NODE){
         if(evaluator(t->left)){
-            evaluator(t->right);
+            int isbreak =evaluator(t->right);
+            if(isbreak==-2)return -1;
             evaluator(t);
             return -1;
         }else{
             return -1;
         }
+    }
+    else if(t->nodetype==REPEAT_UNTIL_NODE){
+        int isbreak =evaluator(t->right);
+        if(isbreak==-2){
+            return -1;
+        }
+        if(evaluator(t->left)==0){
+            evaluator(t);
+            return -1;
+        }else{
+            return -1;
+        }
+    }
+    else if(t->nodetype==DO_WHILE_NODE){
+        int isbreak =evaluator(t->right);
+        if(isbreak==-2){
+            return -1;
+        }
+        if(evaluator(t->left)){
+            evaluator(t);
+            return -1;
+        }else{
+            return -1;
+        }
+    }
+    else if(t->nodetype==BREAK_NODE){
+        return -2;
+    }
+    else if(t->nodetype==CONTINUE_NODE){
+        return -3;
     }
     else if (t->nodetype == OPERATOR_NODE)
     {
@@ -226,8 +264,12 @@ int evaluator(struct tnode *t)
     }
     else
     {
-        evaluator(t->left);
-        evaluator(t->right);
+        int leftval = evaluator(t->left);
+        if(leftval==-2) return -2; //if left subtree is a break/continue node
+        else if(leftval==-3) return -3;
+        int rightval =evaluator(t->right);
+        if(rightval==-2)return -2; //if right subtree is a break/continue node
+        else if(rightval==-3)return -3;
         return -1;
     }
 
@@ -275,6 +317,9 @@ void preorder(struct tnode *root)
     }
     else if(root->nodetype==DO_WHILE_NODE){
         printf("do-while ");
+    }
+    else if(root->nodetype==REPEAT_UNTIL_NODE){
+        printf("repeat-until ");
     }
     else if (root->val != -1)
     {

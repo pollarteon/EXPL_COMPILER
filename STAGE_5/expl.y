@@ -295,7 +295,7 @@ Lid : ID{
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Body :PBEGIN Slist ReturnStmt END {$$ = createNode(-1,1,1,-1,NULL,NULL,CONNECTOR_NODE,$2,$3);};
-| PBEGIN Slist END {$$=$2;}
+
 
 Type : INT {$$ = INTEGER_TYPE;} 
 | STR {$$ = STRING_TYPE;}
