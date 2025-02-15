@@ -1344,7 +1344,7 @@ yyreduce:
     printf("Preorder of Syntax Tree : ");
     preorder((yyvsp[-2].no));
     printf("\n\n");
-    evaluator((yyvsp[-2].no));
+    // evaluator($2);
     int result_reg =code_gen((yyvsp[-2].no),target_file);
     // store_stack(result_reg,target_file);
     exit(1);

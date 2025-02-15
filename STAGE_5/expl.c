@@ -12,6 +12,7 @@ struct tnode *createNode(int val, int row, int col, int type, char *c, char *var
     temp->val = val;
     temp->left = l;
     temp->right = r;
+    temp->middle = NULL;
     temp->size = row * col;
     temp->row = row;
     temp->col = col;
@@ -34,6 +35,7 @@ struct tnode *makeNUMNode(int n)
     temp->varname = NULL;
     temp->left = NULL;
     temp->right = NULL;
+    temp->middle = NULL;
     temp->Gentry = NULL;
     temp->Lentry = NULL;
     temp->argList = NULL;
@@ -52,6 +54,7 @@ struct tnode *makeIDNode(char *varName)
     temp->val = -1;
     temp->left = NULL;
     temp->right = NULL;
+    temp->middle = NULL;
     temp->op = NULL;
     temp->val = -1;
     temp->nodetype = IDENTIFIER_NODE;
@@ -206,7 +209,7 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
             exit(1);
         }
     }
-    else if (temp->nodetype == IF_NODE || temp->nodetype == WHILE_NODE || temp->nodetype == DO_WHILE_NODE)
+    else if (temp->nodetype == IF_NODE || temp->nodetype == WHILE_NODE || temp->nodetype == DO_WHILE_NODE || temp->nodetype==IF_ELSE_NODE)
     {
         if (l->type != BOOLEAN_TYPE)
         {
@@ -347,6 +350,7 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
     }
     temp->left = l;
     temp->right = r;
+    temp->middle = NULL;
     return temp;
 }
 
@@ -636,9 +640,9 @@ void preorder(struct tnode *root)
     {
         printf("if ");
     }
-    else if (root->nodetype == ELSE_NODE)
+    else if (root->nodetype == IF_ELSE_NODE)
     {
-        printf("else ");
+        printf("if-else ");
     }
     else if (root->nodetype == WHILE_NODE)
     {
@@ -697,5 +701,6 @@ void preorder(struct tnode *root)
     }
     preorder(root->left);
     preorder(root->right);
+    preorder(root->middle);
     return;
 }

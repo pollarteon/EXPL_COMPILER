@@ -275,21 +275,26 @@ void if_code_gen(struct tnode *t, FILE *target_file)
     // printf("%d r freee\n",register_num);
     freeReg();
     // printf("%d r\n",register_num);
-    if (t->right->nodetype == ELSE_NODE)
-    {
-        int label2 = getLabel();
-        code_gen(t->right->left, target_file);
-        fprintf(target_file, "JMP L%d\n", label2);
-        fprintf(target_file, "L%d:\n", label1);
-        code_gen(t->right->right, target_file);
-        fprintf(target_file, "L%d:\n", label2);
-    }
-    else
-    {
         code_gen(t->right, target_file);
         fprintf(target_file, "L%d:\n", label1);
-    }
     return;
+}
+
+void if_else_code_gen(struct tnode* t,FILE* target_file){
+    int label1 = getLabel();
+
+    // generating code for guard expression....
+    int gaurd_reg = code_gen(t->left, target_file);
+    fprintf(target_file, "JZ R%d, L%d\n", gaurd_reg, label1);
+    // printf("%d r freee\n",register_num);
+    freeReg();
+    int label2 = getLabel();
+    code_gen(t->right, target_file);
+    fprintf(target_file, "JMP L%d\n", label2);
+    fprintf(target_file, "L%d:\n", label1);
+    code_gen(t->middle, target_file);
+    fprintf(target_file, "L%d:\n", label2);
+    return ;
 }
 
 void while_code_gen(struct tnode *t, FILE *target_file)
@@ -503,6 +508,10 @@ int code_gen(struct tnode *t, FILE *target_file)
     else if (t->nodetype == IF_NODE)
     {
         if_code_gen(t, target_file);
+        return -1;
+    }
+    else if (t->nodetype== IF_ELSE_NODE){
+        if_else_code_gen(t,target_file);
         return -1;
     }
     else if (t->nodetype == WHILE_NODE)

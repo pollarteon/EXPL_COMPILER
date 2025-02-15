@@ -34,7 +34,7 @@ program : PBEGIN Slist END ';'{
     printf("Preorder of Syntax Tree : ");
     preorder($2);
     printf("\n\n");
-    evaluator($2);
+    // evaluator($2);
     int result_reg =code_gen($2,target_file);
     // store_stack(result_reg,target_file);
     exit(1);

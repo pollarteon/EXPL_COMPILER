@@ -4,7 +4,7 @@
 
 singleLineComment (\/\/)[^\n]*
 multilineComment (\/\*)([^*]*(\*)*([^*/])*)(\*\/)
-
+/*hello***/hello*/
 
 
 %option noyywrap

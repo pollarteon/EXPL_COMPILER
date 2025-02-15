@@ -9,7 +9,7 @@
 #define INTEGER_TYPE 9
 #define BOOLEAN_TYPE 10
 #define IF_NODE 11
-#define ELSE_NODE 12
+#define IF_ELSE_NODE 12
 #define WHILE_NODE 13
 #define BREAK_NODE 14
 #define CONTINUE_NODE 15
@@ -75,7 +75,7 @@ typedef struct tnode
     struct FuncArgs* argList; // for function call (can be used for checking function signatures)
     struct Gsymbol* Gentry;
     struct Lsymbol* Lentry;
-    struct tnode *left, *right; // left and right branches
+    struct tnode *left, *right, *middle; // left and right branches , middle for if-else node
 } tnode;
 
 typedef struct IdList

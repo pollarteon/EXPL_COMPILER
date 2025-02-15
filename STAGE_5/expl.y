@@ -338,8 +338,9 @@ BreakpointStmt : BREAKPOINT ';' {$$=makeNonLeafNode(NULL,NULL,BREAKPOINT_NODE,"_
 ContinueStmt : CONTINUE ';' {$$=makeNonLeafNode(NULL,NULL,CONTINUE_NODE,"_");}
 
 Ifstmt : IF '(' expr ')' THEN Slist ELSE Slist ENDIF ';' {
-  struct tnode* statements_node = makeNonLeafNode($6,$8,ELSE_NODE,"_");
-  $$ = makeNonLeafNode($3,statements_node,IF_NODE,"_");
+  struct tnode* if_else_node = makeNonLeafNode($3,$6,IF_ELSE_NODE,"_");
+  if_else_node->middle = $8;
+  $$ = if_else_node;
 }
 | IF '(' expr ')' THEN Slist ENDIF ';' {$$ = makeNonLeafNode($3,$6,IF_NODE,"_");}
 ;
