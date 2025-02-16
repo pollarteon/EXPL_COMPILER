@@ -8,6 +8,7 @@
  #include "code_gen.c"
  int yylex(void);
  extern FILE* yyin;
+ void yyerror(const char* s);
 %}
 
 %union{
@@ -15,17 +16,20 @@
   struct ParamList* plist;
   struct FuncArgs* arglist;
   int integer;
+  char* string;
 }
-%type <no> expr NUM STRING program END ID Slist Stmt
+%token  PLUS MINUS MUL DIV MOD PBEGIN READ WRITE  IF ELSE THEN ENDIF ENDWHILE WHILE OR AND LT GT LTE GTE EQUALS NOTEQUALS DO BREAK CONTINUE DECL ENDDECL INT STR MAIN RETURN BREAKPOINT
+%token <no> NUM STRING END ID
+%type <no> expr program Slist Stmt
 %type <no> InputStmt OutputStmt AsgStmt WhileStmt Ifstmt 
 %type <no> BreakStmt ContinueStmt DoWhileStmt ReturnStmt BreakpointStmt
 %type <no> Identifier index
 %type <no>  FdefBlock MainBlock Gdecl GidList Gid
 %type <no> Fdef  LdeclBlock Body LdecList Ldecl IdList Lid
-%type <integer> Type
+%type <string> Type
 %type <plist> ParamList Param
 %type <arglist> ArgList
-%token NUM STRING PLUS MINUS MUL DIV MOD END PBEGIN READ WRITE ID IF ELSE THEN ENDIF ENDWHILE WHILE OR AND LT GT LTE GTE EQUALS NOTEQUALS DO BREAK CONTINUE DECL ENDDECL INT STR MAIN RETURN BREAKPOINT
+
 %left OR
 %left AND
 %left EQUALS NOTEQUALS
@@ -51,20 +55,20 @@ GDeclBlock : DECL GdeclList ENDDECL {print_GSymbolTable();L_cleanup();local_bind
 GdeclList : GdeclList Gdecl {} | Gdecl {};
 
 Gdecl : Type GidList ';' {
-  int declaration_type = $1;
+  char* declaration_type = $1;
   struct tnode* varList = $2; //varList contains List of variables
   while(varList!=NULL){
     struct Gsymbol* Gentry = GLookUp(varList->varname);
-    if(Gentry->type==POINTER_TYPE){ //if variable inserted as a pointer type
-      if(declaration_type==INTEGER_TYPE){
-        Gentry->type = POINTER_INT_TYPE;
+    if( (Gentry->type!=NULL) && strcmp(Gentry->type->name,"pointer")==0){ //if variable inserted as a pointer type
+      if(strcmp(declaration_type,"int")==0){
+        Gentry->type = TLookup("pointer(int)");
       }
-      if(declaration_type==STRING_TYPE){
-        Gentry->type =POINTER_STR_TYPE;
+      if(strcmp(declaration_type,"str")==0){
+        Gentry->type =TLookup("pointer(str)");
       }
     }
-    else if(Gentry->type==-1){
-      Gentry->type = declaration_type;
+    else if(Gentry->type==NULL){
+      Gentry->type = TLookup(declaration_type);
     }
     else{
       printf("ERROR: REDECLARATION OF VARIABLE %s\n",Gentry->name);
@@ -85,28 +89,28 @@ GidList : GidList ',' Gid {
 } | Gid;
 
 Gid : ID{
-  G_Install($1->varname,-1,1,-1,NULL,-1);
-   $$=createNode(-1,1,-1,-1,NULL,$1->varname,-1,NULL,NULL);
+  G_Install($1->varname,NULL,1,-1,NULL,-1);
+   $$=createNode(-1,1,-1,NULL,NULL,$1->varname,-1,NULL,NULL);
 }
 | ID '[' NUM ']'{
-  G_Install($1->varname,-1,$3->val,-1,NULL,-1);
-  $$=createNode(-1,$3->val,1,1,NULL,$1->varname,-1,NULL,NULL);
+  G_Install($1->varname,NULL,$3->val,-1,NULL,-1);
+  $$=createNode(-1,$3->val,1,NULL,NULL,$1->varname,-1,NULL,NULL);
 }
 | ID '[' NUM ']' '[' NUM ']'{
-  G_Install($1->varname,-1,$3->val,$6->val,NULL,-1);
-   $$ = createNode(-1,$3->val,$6->val,1,NULL,$1->varname,-1,NULL,NULL);
+  G_Install($1->varname,NULL,$3->val,$6->val,NULL,-1);
+   $$ = createNode(-1,$3->val,$6->val,NULL,NULL,$1->varname,-1,NULL,NULL);
 }
 | MUL ID { //this is for Pointer
-  G_Install($2->varname,POINTER_TYPE,1,-1,NULL,-1);
-  $$ = createNode(-1,1,-1,POINTER_TYPE,NULL,$2->varname,-1,NULL,NULL);
+  G_Install($2->varname,TLookup("pointer"),1,-1,NULL,-1);
+  $$ = createNode(-1,1,-1,TLookup("pointer"),NULL,$2->varname,-1,NULL,NULL);
 }
 | ID '(' ParamList ')' {
-  G_Install($1->varname,-1,1,-1,$3,flabel++);
-  $$ = createNode(-1,1,-1,-1,NULL,$1->varname,-1,NULL,NULL);
+  G_Install($1->varname,NULL,1,-1,$3,flabel++);
+  $$ = createNode(-1,1,-1,NULL,NULL,$1->varname,-1,NULL,NULL);
 }
 | ID '(' ')'{
-  G_Install($1->varname,-1,1,-1,NULL,flabel++);
-  $$ = createNode(-1,1,-1,-1,NULL,$1->varname,-1,NULL,NULL);
+  G_Install($1->varname,NULL,1,-1,NULL,flabel++);
+  $$ = createNode(-1,1,-1,NULL,NULL,$1->varname,-1,NULL,NULL);
 }
 ;
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -116,18 +120,24 @@ Gid : ID{
 FdefBlock : FdefBlock Fdef | Fdef;
 
 Fdef : Type ID '(' ParamList ')' '{' LdeclBlock Body '}' {
-  int definition_type = $1;
+  char* definition_type = $1;
   struct ParamList* defintion_param_list = $4;
   struct Gsymbol* Gentry = $2->Gentry;
   if(Gentry==NULL){
     printf("ERROR: FUNCTION NOT DECLARED %s\n",$2->varname);
     return -1;
   }
+  //checking return type equivalence
+  if(strcmp(definition_type,Gentry->type->name)!=0){
+    printf("ERROR: FUNCTION RETURN TYPE NOT MATCHING WITH DECLARATION\n");
+    return -1;
+  }
+
   //checking param equivalence
   struct ParamList* temp1 = defintion_param_list;
   struct ParamList* temp2 = Gentry->param_list;
   while(temp1!=NULL && temp2!=NULL){
-    if(strcmp(temp1->name,temp2->name)!=0 || temp1->type!=temp2->type){
+    if(strcmp(temp1->name,temp2->name)!=0 || strcmp(temp1->type->name,temp2->type->name)!=0){
       printf("ERROR: FUNCTION MISMATCH %s\n",Gentry->name);
       return -1;
     }
@@ -135,7 +145,7 @@ Fdef : Type ID '(' ParamList ')' '{' LdeclBlock Body '}' {
     temp2=temp2->next;
   }
   if(temp1!=NULL || temp2!=NULL){
-    printf("ERROR: FUNCTION DECLARATION UNMATCHED: %s\n",Gentry->name);
+    printf("ERROR: FUNCTION DECLARATION MISMATCHED: %s\n",Gentry->name);
     return -1;
   }
   //Generating Header and Cleaning Up Local Symbol Table
@@ -150,7 +160,7 @@ Fdef : Type ID '(' ParamList ')' '{' LdeclBlock Body '}' {
     printf("Preorder of Syntax Tree : ");
     preorder($8);
     printf("\n\n");
-    returnStmt_checker($8,$1); //return statement checker..............
+    returnStmt_checker($8,TLookup(definition_type)); //return statement checker..............
     fprintf(target_file,"F%d:\n",Gentry->flabel);
     function_begin_code_gen(target_file,Ltable);
     code_gen($8,target_file);
@@ -160,7 +170,7 @@ Fdef : Type ID '(' ParamList ')' '{' LdeclBlock Body '}' {
     fclose(target_file);
 }
 | Type ID '(' ')' '{' LdeclBlock Body '}'{
-  int definition_type = $1;
+  char* definition_type = $1;
   struct Gsymbol* Gentry = GLookUp($2->varname);
   if(Gentry==NULL){
     printf("ERROR: FUNCTION NOT DECLARED %s\n",$2->varname);
@@ -173,7 +183,7 @@ Fdef : Type ID '(' ParamList ')' '{' LdeclBlock Body '}' {
     printf("Preorder of Syntax Tree : ");
     preorder($7);
     printf("\n\n");
-    returnStmt_checker($7,$1); //return statement checker..............
+    returnStmt_checker($7,TLookup(definition_type)); //return statement checker..............
     fprintf(target_file,"F%d:\n",Gentry->flabel);
     function_begin_code_gen(target_file,Ltable);
     code_gen($7,target_file);
@@ -197,16 +207,17 @@ ParamList : ParamList ',' Param {
 };
 
 Param : Type ID {
-  L_Install($2->varname,$1,1);
-  $$ = create_param_list($1,$2->varname);
+  Typetable* param_type = TLookup($1);
+  L_Install($2->varname,param_type,1);
+  $$ = create_param_list(param_type,$2->varname);
 }
 | Type MUL ID{
-  int declaration_type = $1;
-  int Lentry_type;
-  if(declaration_type==INTEGER_TYPE){
-    Lentry_type = POINTER_INT_TYPE;
+  char* declaration_type = $1;
+  Typetable* Lentry_type;
+  if(strcmp(declaration_type,"int")==0){
+    Lentry_type = TLookup("pointer(int)");
   }else{
-    Lentry_type = POINTER_STR_TYPE;
+    Lentry_type = TLookup("pointer(str)");
   }
   L_Install($3->varname,Lentry_type,1);
   $$ = create_param_list(Lentry_type,$3->varname);
@@ -228,7 +239,7 @@ MainBlock : INT MAIN '(' ')' '{' LdeclBlock Body '}' {
     printf("Preorder of Syntax Tree : ");
     preorder($7);
     printf("\n\n");
-    returnStmt_checker($7,INTEGER_TYPE);
+    returnStmt_checker($7,TLookup("int"));
     fprintf(target_file,"MAIN:\n");
     function_begin_code_gen(target_file,Ltable);
     int result_reg =code_gen($7,target_file);
@@ -249,22 +260,22 @@ LdeclBlock : DECL LdecList ENDDECL {local_binding=1;}
 LdecList : LdecList  Ldecl {} | Ldecl {};
 
 Ldecl : Type IdList ';' {
-  int declaration_type = $1;
+  char* declaration_type = $1;
   struct tnode* varList = $2; //varList contains List of variables
 
   while(varList!=NULL){
     struct Lsymbol* Lentry = LLookUp(varList->varname);
     if(Lentry==NULL){
-      if(varList->type==POINTER_TYPE){
-        if(declaration_type==INTEGER_TYPE){
-          L_Install(varList->varname,POINTER_INT_TYPE,0);
+      if(varList->type!=NULL && strcmp(varList->type->name,"pointer")==0){
+        if(strcmp(declaration_type,"int")==0){
+          L_Install(varList->varname,TLookup("pointer(int)"),0);
         }
-        if(declaration_type==STRING_TYPE){
-          L_Install(varList->varname,POINTER_STR_TYPE,0);
+        if(strcmp(declaration_type,"str")==0){
+          L_Install(varList->varname,TLookup("pointer(str)"),0);
         }
       }
       else
-      L_Install(varList->varname,declaration_type,0);
+      L_Install(varList->varname,TLookup(declaration_type),0);
     }
     else{
       printf("ERROR: REDECLARATION OF LOCAL VARIABLE IN %s\n",Lentry->name);
@@ -286,22 +297,22 @@ IdList : IdList ',' Lid {
 } | Lid ;
 
 Lid : ID{
-   $$=createNode(-1,1,-1,-1,NULL,$1->varname,-1,NULL,NULL);
+   $$=createNode(-1,1,-1,NULL,NULL,$1->varname,-1,NULL,NULL);
 }
 | MUL ID { //this is for Pointer
-  $$ = createNode(-1,1,-1,POINTER_TYPE,NULL,$2->varname,-1,NULL,NULL);
+  $$ = createNode(-1,1,-1,TLookup("pointer"),NULL,$2->varname,-1,NULL,NULL);
 };
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-Body :PBEGIN Slist ReturnStmt END {$$ = createNode(-1,1,1,-1,NULL,NULL,CONNECTOR_NODE,$2,$3);};
+Body :PBEGIN Slist ReturnStmt END {$$ = createNode(-1,1,1,NULL,NULL,NULL,CONNECTOR_NODE,$2,$3);};
 
 
-Type : INT {$$ = INTEGER_TYPE;} 
-| STR {$$ = STRING_TYPE;}
+Type : INT {$$ = "int";} 
+| STR {$$ = "str";}
 
 Slist : Slist Stmt {
-  $$=createNode(-1,1,1,-1,NULL,NULL,CONNECTOR_NODE,$1,$2);
+  $$=createNode(-1,1,1,NULL,NULL,NULL,CONNECTOR_NODE,$1,$2);
 }
 | Stmt {$$=$1;}
 ;
@@ -457,17 +468,17 @@ Identifier : ID {
     int table_type = check_identifier(IDNode);
     if (table_type == 1) {//GLOBAL variable
         // Pointer dereferencing checks
-        if (IDNode->Gentry->type != POINTER_INT_TYPE && IDNode->Gentry->type != POINTER_STR_TYPE) {
+        if (strcmp(IDNode->Gentry->type->name,"pointer(int)")!=0 && strcmp(IDNode->Gentry->type->name,"pointer(str)")!=0) {
             printf("ERROR: DEREFERENCING A NON-POINTER VARIABLE %s\n", IDNode->Gentry->name);
             exit(1);
         }
-        IDNode->type = (IDNode->Gentry->type == POINTER_INT_TYPE) ? INTEGER_TYPE : STRING_TYPE;
+        IDNode->type = (strcmp(IDNode->Gentry->type->name,"pointer(int)")==0) ? TLookup("int") : TLookup("str");
     }else{//LOCAL variable
-      if (IDNode->Lentry->type != POINTER_INT_TYPE && IDNode->Lentry->type != POINTER_STR_TYPE) {
+      if (strcmp(IDNode->Lentry->type->name,"pointer(int)")!=0 && strcmp(IDNode->Lentry->type->name,"pointer(str)")!=0 ) {
             printf("ERROR: DEREFERENCING A NON-POINTER VARIABLE %s\n", IDNode->Lentry->name);
             exit(1);
         }
-      IDNode->type = (IDNode->Lentry->type == POINTER_INT_TYPE) ? INTEGER_TYPE : STRING_TYPE;
+      IDNode->type = (strcmp(IDNode->Lentry->type->name,"pointer(int)")==0) ? TLookup("int") : TLookup("str");
     }
 
     struct tnode* dereference_node = makeNonLeafNode(IDNode, NULL, DEREFERENCE_NODE, "_");
@@ -484,15 +495,15 @@ Identifier : ID {
           Gentry=IDNode->left->Gentry;
           printf("%d\n",IDNode->right->nodetype);
         }
-        addressNode->type = (Gentry->type == INTEGER_TYPE || Gentry->type == POINTER_INT_TYPE)
-                                ? POINTER_INT_TYPE
-                                : POINTER_STR_TYPE;
+        addressNode->type = (strcmp(Gentry->type->name,"int")==0 || strcmp(Gentry->type->name,"pointer(int)")==0 )
+                                ? TLookup("pointer(int)")
+                                : TLookup("pointer(str)");
         $$ = addressNode;
     }else{//LOCAL variable
       struct tnode* addressNode = makeNonLeafNode(IDNode, NULL, ADDRESS_NODE, "_");
-        addressNode->type = (IDNode->Lentry->type == INTEGER_TYPE || IDNode->Lentry->type == POINTER_INT_TYPE)
-                                ? POINTER_INT_TYPE
-                                : POINTER_STR_TYPE;
+        addressNode->type = (strcmp(IDNode->Lentry->type->name,"int")==0 || strcmp(IDNode->Lentry->type->name,"pointer(int)")==0 )
+                                ? TLookup("pointer(int)")
+                                : TLookup("pointer(str)");
         $$ = addressNode;
     }
 }
@@ -502,7 +513,7 @@ index : expr {$$=$1;}
 
 %%
 
-yyerror(char const *s)
+void yyerror(char const *s)
 {
     printf("yyerror %s",s);
 }
@@ -511,6 +522,8 @@ yyerror(char const *s)
 int main(void) {
   FILE* input_file = fopen("input.txt","r");
   yyin = input_file;
+  TypeTableCreate();
+  PrintTypeTable();
  yyparse();
 
  return 0;

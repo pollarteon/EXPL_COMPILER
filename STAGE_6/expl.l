@@ -3,7 +3,7 @@
  #include <stdio.h>
  #include "y.tab.h"
  #include "expl.h"
-
+ void yyerror(const char* s);
  int number;
  char* variable;
  int line_number =1;
@@ -53,7 +53,7 @@
 "}" {return *yytext;}
 ["][a-zA-Z0-9_ ]*["] {
     // printf("%s\n",yytext);
-    yylval.no = createNode(-1,1,-1,STRING_TYPE,NULL,yytext,CONST_NODE,NULL,NULL);
+    yylval.no = createNode(-1,1,-1,TLookup("str"),NULL,yytext,CONST_NODE,NULL,NULL);
     return STRING;
 }
 [a-zA-Z][a-zA-Z0-9_]* {// look later

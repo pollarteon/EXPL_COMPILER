@@ -127,7 +127,6 @@ void function_end_code_gen(FILE* target_file,struct Lsymbol* Ltable){
 int array_code_gen(struct tnode *t, FILE *target_file)
 {
     struct Gsymbol *Gentry = t->left->Gentry;
-    printf("Hello\n");
     if (t->right->nodetype != _2D_ARRAY_NODE)
     {
         int index_reg;
@@ -147,8 +146,8 @@ int array_code_gen(struct tnode *t, FILE *target_file)
         int reg_result = getReg();
         int row_index_reg = code_gen(t->right->left, target_file);
         int col_index_reg = code_gen(t->right->right, target_file);
-        printf("%d\n",row_index_reg);
-        printf("%d\n",col_index_reg);
+        // printf("%d\n",row_index_reg);
+        // printf("%d\n",col_index_reg);
         int storage_location = Gentry->binding;
         int col = Gentry->col;
         fprintf(target_file, "MOV R%d, %d\n", reg_result, storage_location);
@@ -336,7 +335,7 @@ int address_of_code_gen(struct tnode *t, FILE *target_file)
     {
         if (identifier_node->right->nodetype != _2D_ARRAY_NODE)
         {
-            printf("HELLO\n");
+    
             int index_reg;
             int reg_result = getReg();
             index_reg = code_gen(identifier_node->right, target_file);
@@ -351,8 +350,8 @@ int address_of_code_gen(struct tnode *t, FILE *target_file)
             int reg_result = getReg();
             int row_index_reg = code_gen(identifier_node->right->left, target_file);
             int col_index_reg = code_gen(identifier_node->right->right, target_file);
-            printf("%d\n",row_index_reg);
-            printf("%d\n",col_index_reg);
+            // printf("%d\n",row_index_reg);
+            // printf("%d\n",col_index_reg);
             int storage_location = identifier_node->left->Gentry->binding;
             int col = identifier_node->left->Gentry->col;
             fprintf(target_file, "MOV R%d, %d\n", reg_result, storage_location);
@@ -467,7 +466,7 @@ int code_gen(struct tnode *t, FILE *target_file)
     else if (t->nodetype == CONST_NODE)
     {
         int reg_num = getReg();
-        if (t->type == INTEGER_TYPE)
+        if (strcmp(t->type->name,"int")==0)
             fprintf(target_file, "MOV R%d, %d\n", reg_num, t->val);
         else
             fprintf(target_file, "MOV R%d, %s\n", reg_num, t->varname);
@@ -649,7 +648,7 @@ int code_gen(struct tnode *t, FILE *target_file)
             // printf("%d\n",storage_location);
             fprintf(target_file, "MOV [%d], R%d\n", storage_location, reg2);
             freeReg();
-            printf("%d r\n",register_num);
+            // printf("%d r\n",register_num);
             return -1;
         }
         // node is a arithmetic operator node or logical operator node
