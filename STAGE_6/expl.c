@@ -390,15 +390,62 @@ struct Typetable* TLookup(char* name){
     return temp;
 }
 
+struct Fieldlist* FLookup(struct Typetable *type,char* name){
+    if(type==NULL)return NULL;
+    struct Fieldlist* temp = type->fields;
+    while(temp!=NULL && strcmp(temp->name,name)!=0){
+        temp = temp->next;
+    }
+    return temp;
+}
+
+struct Fieldlist* Finstall(struct Fieldlist* fields,struct Fieldlist* field){
+    struct Fieldlist* temp = fields;
+    if(temp==NULL) return field;
+    while(temp->next!=NULL){
+        temp=temp->next;
+    }
+    temp->next = field;
+    return fields;
+}
+
+struct Fieldlist* Fcreate(char* name,int fieldIndex,struct Typetable* type){
+    struct Fieldlist* field = (Fieldlist*)malloc(sizeof(Fieldlist));
+    field->name = strdup(name);
+    field->fieldIndex = fieldIndex;
+    field->type = type;
+    field->next=NULL;
+    return field;
+}
+
 void PrintTypeTable(){
     Typetable* temp = Type_table;
     printf("---------------------TYPE_TABLE--------------------\n");
     while(temp!=NULL){
-        printf("|--%s--|",temp->name);
+        printf("|--%s(%d)--|",temp->name,temp->size);
         temp=temp->next;
     }
     printf("\n\n");
     return ;
+}
+
+void PrintFieldlist(struct Fieldlist* fieldlist){
+    struct Fieldlist* temp = fieldlist;
+    printf("\n--------------------Field---------------------\n");
+    while(temp!=NULL){
+        printf("|---%s(%d)%s---|",temp->name,temp->fieldIndex,temp->type->name);
+        temp=temp->next;
+    }
+    printf("\n\n");
+    return ;
+}
+
+int GetSize(struct Typetable *type){
+    if(type==NULL){
+        printf("Getting size of null type !!\n");
+        return 0;
+    }
+    return type->size;
 }
 
 //----------GLOBAL SYMBOL TABLE FUNCTIONS --------------------------

@@ -32,6 +32,8 @@
 "main" {return MAIN;}
 "return" {return RETURN;}
 "breakpoint" {return BREAKPOINT;}
+"type" {return TYPE;}
+"endtype" {return ENDTYPE;}
 "<" {return LT;}
 ">" {return GT;}
 "<=" {return LTE;}

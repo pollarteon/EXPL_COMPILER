@@ -163,9 +163,15 @@ struct Typetable* Tinstall(char* name,int size,struct Fieldlist *fields);
 
 struct Fieldlist* FLookup(struct Typetable *type, char *name);
 
+struct Fieldlist* Finstall(struct Fieldlist* fields,struct Fieldlist* field);
+
+struct Fieldlist* Fcreate(char* name,int fieldIndex,struct Typetable* type);
+
 int GetSize(struct Typetable *type);
 
 void PrintTypeTable();
+
+void PrintFieldlist(struct Fieldlist* fieldlist);
 
 //----------------------------------------------------------------
 

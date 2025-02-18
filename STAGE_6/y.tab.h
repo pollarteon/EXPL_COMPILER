@@ -86,10 +86,12 @@ extern int yydebug;
     MAIN = 287,                    /* MAIN  */
     RETURN = 288,                  /* RETURN  */
     BREAKPOINT = 289,              /* BREAKPOINT  */
-    NUM = 290,                     /* NUM  */
-    STRING = 291,                  /* STRING  */
-    END = 292,                     /* END  */
-    ID = 293                       /* ID  */
+    TYPE = 290,                    /* TYPE  */
+    ENDTYPE = 291,                 /* ENDTYPE  */
+    NUM = 292,                     /* NUM  */
+    STRING = 293,                  /* STRING  */
+    END = 294,                     /* END  */
+    ID = 295                       /* ID  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -130,10 +132,12 @@ extern int yydebug;
 #define MAIN 287
 #define RETURN 288
 #define BREAKPOINT 289
-#define NUM 290
-#define STRING 291
-#define END 292
-#define ID 293
+#define TYPE 290
+#define ENDTYPE 291
+#define NUM 292
+#define STRING 293
+#define END 294
+#define ID 295
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
@@ -144,10 +148,11 @@ union YYSTYPE
   struct tnode *no;
   struct ParamList* plist;
   struct FuncArgs* arglist;
+  struct Fieldlist* fieldlist;
   int integer;
   char* string;
 
-#line 151 "y.tab.h"
+#line 156 "y.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

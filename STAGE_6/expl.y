@@ -15,10 +15,11 @@
   struct tnode *no;
   struct ParamList* plist;
   struct FuncArgs* arglist;
+  struct Fieldlist* fieldlist;
   int integer;
   char* string;
 }
-%token  PLUS MINUS MUL DIV MOD PBEGIN READ WRITE  IF ELSE THEN ENDIF ENDWHILE WHILE OR AND LT GT LTE GTE EQUALS NOTEQUALS DO BREAK CONTINUE DECL ENDDECL INT STR MAIN RETURN BREAKPOINT
+%token  PLUS MINUS MUL DIV MOD PBEGIN READ WRITE  IF ELSE THEN ENDIF ENDWHILE WHILE OR AND LT GT LTE GTE EQUALS NOTEQUALS DO BREAK CONTINUE DECL ENDDECL INT STR MAIN RETURN BREAKPOINT TYPE ENDTYPE
 %token <no> NUM STRING END ID
 %type <no> expr program Slist Stmt
 %type <no> InputStmt OutputStmt AsgStmt WhileStmt Ifstmt 
@@ -26,9 +27,10 @@
 %type <no> Identifier index
 %type <no>  FdefBlock MainBlock Gdecl GidList Gid
 %type <no> Fdef  LdeclBlock Body LdecList Ldecl IdList Lid
-%type <string> Type
+%type <string> Type TypeName
 %type <plist> ParamList Param
 %type <arglist> ArgList
+%type <fieldlist> FieldDecl FieldDeclList
 
 %left OR
 %left AND
@@ -40,11 +42,72 @@
 
 %%
 
-program : GDeclBlock FdefBlock MainBlock{printf("Program finished\n");exit(1);}
-  | GDeclBlock MainBlock {printf("Program finished\n");exit(1);} 
-  | MainBlock {printf("Program finished\n");exit(1);};
-  | GDeclBlock PBEGIN Slist END {printf("Program finished\n");exit(1);}
+program :TypeDefBlock GDeclBlock FdefBlock MainBlock{printf("Program Finished\n");exit(1);}
+  | TypeDefBlock GDeclBlock  MainBlock{printf("Program Finished\n");exit(1);}
+  | TypeDefBlock MainBlock{printf("Program Finished\n");exit(1);}
   ;
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+/// TYPE DEFINITIONS SYNTAX
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+TypeDefBlock : TYPE TypeDefList ENDTYPE {PrintTypeTable();};
+  |
+  ;
+
+TypeDefList : TypeDefList TypeDef {};
+  | TypeDef {};
+  ;
+
+TypeDef : ID '{' FieldDeclList '}' {
+  char* type_name = $1->varname;
+  Tinstall(type_name,0,$3);
+  struct Typetable* declared_type = TLookup(type_name);
+  struct Fieldlist* fields = (declared_type)->fields;
+  struct Fieldlist* temp = fields;
+  int fieldIndex = 1;
+  int total_size =0;
+  while(temp!=NULL){
+    temp->fieldIndex = fieldIndex++;
+    if(temp->type->size==-1){
+     if(strcmp(temp->type->name,type_name)==0){
+        free(temp->type->name); //freeing the temporoary type and making 
+        free(temp->type); //temp->type point to the type table entry
+        temp->type = declared_type;
+     }
+     else{
+      printf("ERROR: type not defined earlier %s",temp->name);
+      return -1;
+     }
+    }
+    total_size += GetSize(temp->type);
+    temp=temp->next;
+  }
+  declared_type->size = total_size;
+  PrintFieldlist(fields);
+
+}
+
+FieldDeclList : FieldDeclList FieldDecl {$$ =Finstall($1,$2);}
+  | FieldDecl {$$=$1;}
+  ;
+
+FieldDecl : TypeName ID ';' {
+  struct Typetable* type = TLookup($1);
+  if(type==NULL){
+    type = (struct Typetable*)malloc(sizeof(struct Typetable));
+    type->name = strdup($1);
+    type->size = -1; //to  indicate that the type was not present in the type table
+    type->fields=NULL;
+    type->next=NULL;
+  }
+  $$ = Fcreate($2->varname,0,type);
+}
+
+TypeName : INT {$$="int";}
+  | STR {$$="str";}
+  | ID {$$=$1->varname;};
+  ;
+
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 /// GLOBAL DECLARATIONS SYNTAX
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -56,6 +119,7 @@ GdeclList : GdeclList Gdecl {} | Gdecl {};
 
 Gdecl : Type GidList ';' {
   char* declaration_type = $1;
+  struct Typetable* declaration_type_entry = TLookup(declaration_type);
   struct tnode* varList = $2; //varList contains List of variables
   while(varList!=NULL){
     struct Gsymbol* Gentry = GLookUp(varList->varname);
@@ -63,12 +127,16 @@ Gdecl : Type GidList ';' {
       if(strcmp(declaration_type,"int")==0){
         Gentry->type = TLookup("pointer(int)");
       }
-      if(strcmp(declaration_type,"str")==0){
+      else if(strcmp(declaration_type,"str")==0){
         Gentry->type =TLookup("pointer(str)");
+      }
+      else{
+        printf("ERROR: pointers are not reserved for user-defined type: %s\n",declaration_type);
+        return -1;
       }
     }
     else if(Gentry->type==NULL){
-      Gentry->type = TLookup(declaration_type);
+      Gentry->type = declaration_type_entry;
     }
     else{
       printf("ERROR: REDECLARATION OF VARIABLE %s\n",Gentry->name);
@@ -150,7 +218,7 @@ Fdef : Type ID '(' ParamList ')' '{' LdeclBlock Body '}' {
   }
   //Generating Header and Cleaning Up Local Symbol Table
   FILE* target_file = fopen("code.xsm","a");
-  if(!begin_flag){
+  if(!begin_flag){ //if we are generating the first function the header generated
       fclose(target_file);
       target_file = fopen("code.xsm","w");
       header_code_gen(target_file);
@@ -216,8 +284,13 @@ Param : Type ID {
   Typetable* Lentry_type;
   if(strcmp(declaration_type,"int")==0){
     Lentry_type = TLookup("pointer(int)");
-  }else{
+  }
+  else if(strcmp(declaration_type,"str")){
     Lentry_type = TLookup("pointer(str)");
+  }
+  else{
+    printf("ERROR: pointers not reserved for user-defined type : %s\n",declaration_type);
+    return -1;
   }
   L_Install($3->varname,Lentry_type,1);
   $$ = create_param_list(Lentry_type,$3->varname);
@@ -261,6 +334,7 @@ LdecList : LdecList  Ldecl {} | Ldecl {};
 
 Ldecl : Type IdList ';' {
   char* declaration_type = $1;
+  struct Typetable* declaration_type_entry = TLookup(declaration_type);
   struct tnode* varList = $2; //varList contains List of variables
 
   while(varList!=NULL){
@@ -270,12 +344,16 @@ Ldecl : Type IdList ';' {
         if(strcmp(declaration_type,"int")==0){
           L_Install(varList->varname,TLookup("pointer(int)"),0);
         }
-        if(strcmp(declaration_type,"str")==0){
+        else if(strcmp(declaration_type,"str")==0){
           L_Install(varList->varname,TLookup("pointer(str)"),0);
+        }
+        else{
+          printf("ERROR: pointers not reserved for user-defined variables: %s\n",declaration_type);
+          return -1;
         }
       }
       else
-      L_Install(varList->varname,TLookup(declaration_type),0);
+      L_Install(varList->varname,declaration_type_entry,0);
     }
     else{
       printf("ERROR: REDECLARATION OF LOCAL VARIABLE IN %s\n",Lentry->name);
@@ -306,10 +384,18 @@ Lid : ID{
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Body :PBEGIN Slist ReturnStmt END {$$ = createNode(-1,1,1,NULL,NULL,NULL,CONNECTOR_NODE,$2,$3);};
-
+| PBEGIN ReturnStmt END {$$=$2;}
 
 Type : INT {$$ = "int";} 
 | STR {$$ = "str";}
+| ID {
+    char* type_name = $1->varname;
+    if(TLookup($1->varname)==NULL){
+      printf("ERROR : The Following type is not user-defined %s\n",type_name);
+      return -1;
+    }
+    $$=$1->varname;
+  }
 
 Slist : Slist Stmt {
   $$=createNode(-1,1,1,NULL,NULL,NULL,CONNECTOR_NODE,$1,$2);
@@ -523,8 +609,7 @@ int main(void) {
   FILE* input_file = fopen("input.txt","r");
   yyin = input_file;
   TypeTableCreate();
-  PrintTypeTable();
- yyparse();
+  yyparse();
 
  return 0;
 }
