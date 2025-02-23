@@ -45,7 +45,7 @@ struct tnode *makeNUMNode(int n)
     // printf("MADE NUM NODE: %d\n",temp->val);
     return temp;
 }
-
+ 
 struct tnode *makeIDNode(char *varName)
 {
     struct tnode *temp;
@@ -191,6 +191,7 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
                 printf("ERROR: & is an lval operator\n");
                 exit(1);
             }
+       
             if (strcmp(l->type->name,r->type->name)) //types are not matching
             {
                 printf("%s\n", temp->op);
@@ -360,6 +361,7 @@ void TypeTableCreate(){
     Type_table = Tinstall("int",1,NULL);
     Type_table = Tinstall("str",1,NULL);
     Type_table = Tinstall("bool",1,NULL);
+    Type_table = Tinstall("NULL",0,NULL);
     Type_table = Tinstall("void",0,NULL);
     Type_table = Tinstall("pointer",0,NULL);
     Type_table = Tinstall("pointer(int)",0,NULL);
@@ -781,6 +783,9 @@ void preorder(struct tnode *root)
     else if(root->nodetype == DEREFERENCE_NODE){
         printf("* ");
     }
+    else if(root->nodetype==FIELD_NODE){
+        printf("field ");
+    }
     else if (root->nodetype == CONST_NODE)
     {
         if (strcmp(root->type->name,"int")==0)
@@ -794,6 +799,8 @@ void preorder(struct tnode *root)
             printf("%s ",root->Lentry->name);
         else if (root->Gentry)
             printf("%s ", root->Gentry->name);
+        else    
+            printf("%s ",root->varname); // for printing fields
     }
     preorder(root->left);
     preorder(root->right);

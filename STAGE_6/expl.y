@@ -19,14 +19,14 @@
   int integer;
   char* string;
 }
-%token  PLUS MINUS MUL DIV MOD PBEGIN READ WRITE  IF ELSE THEN ENDIF ENDWHILE WHILE OR AND LT GT LTE GTE EQUALS NOTEQUALS DO BREAK CONTINUE DECL ENDDECL INT STR MAIN RETURN BREAKPOINT TYPE ENDTYPE
+%token  PLUS MINUS MUL DIV MOD PBEGIN READ WRITE  IF ELSE THEN ENDIF ENDWHILE WHILE OR AND LT GT LTE GTE EQUALS NOTEQUALS DO BREAK CONTINUE DECL ENDDECL INT STR MAIN RETURN BREAKPOINT TYPE ENDTYPE PNULL
 %token <no> NUM STRING END ID
 %type <no> expr program Slist Stmt
 %type <no> InputStmt OutputStmt AsgStmt WhileStmt Ifstmt 
 %type <no> BreakStmt ContinueStmt DoWhileStmt ReturnStmt BreakpointStmt
 %type <no> Identifier index
 %type <no>  FdefBlock MainBlock Gdecl GidList Gid
-%type <no> Fdef  LdeclBlock Body LdecList Ldecl IdList Lid
+%type <no> Fdef  LdeclBlock Body LdecList Ldecl IdList Lid Field
 %type <string> Type TypeName
 %type <plist> ParamList Param
 %type <arglist> ArgList
@@ -593,9 +593,60 @@ Identifier : ID {
         $$ = addressNode;
     }
 }
+| Field {
+  struct tnode* field_node =makeNonLeafNode($1,NULL,FIELD_NODE,"_");
+  //field validation
+  struct tnode* temp = field_node->left;
+  struct tnode* identifier_node = field_node->left;
+  struct Typetable* curr_type ;
+  char* field_name;
+  int scope_of_var = check_identifier(temp);
+  if(scope_of_var==1){//identifer exists in Gsymbol table;
+    curr_type = temp->Gentry->type;
+  }
+  else if(scope_of_var==2){//Lsymbol variable
+    curr_type = temp->Lentry->type;
+  }
+  else{
+    printf("ERROR: varaible not declared !! :%s\n",temp->varname);
+    return -1;
+  }
+  while(temp!=NULL){
+    
+    if(temp->left!=NULL){
+      field_name = temp->left->varname;
+    }else break;
+    struct Fieldlist* curr_field = FLookup(curr_type,field_name);
+    if(curr_field==NULL){
+      printf("ERROR: Field doesn't exist for type : %s %s\n",curr_type->name,field_name);
+      return -1;
+    }else{
+      curr_type = curr_field->type;
+    }
+    temp=temp->left;
+  }
+  field_node->type=curr_type;
+  // printf("%s\n",field_node->type->name);
+  $$ = field_node;
+}
+;
+
+Field : Field '.' ID {
+  struct tnode* temp = $1;
+  while(temp->left!=NULL){
+    temp=temp->left;
+  }
+  temp->left=$3;
+  $$=$1;
+}
+| ID '.' ID {
+  $1->left = $3;
+  $$=$1;
+}
 ;
 
 index : expr {$$=$1;}
+;
 
 %%
 

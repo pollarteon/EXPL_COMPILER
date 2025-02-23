@@ -618,6 +618,10 @@ int code_gen(struct tnode *t, FILE *target_file)
                 freeReg();
                 return -1;
             }
+            if(t->left->nodetype==FIELD_NODE){
+                printf("FIELDS will be handled later in code_gen\n");
+                return -1;
+            }
             int storage_location ;
             struct Lsymbol* Lentry = t->left->Lentry;
             if(Lentry){

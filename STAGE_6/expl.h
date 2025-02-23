@@ -25,6 +25,7 @@
 #define FUNCTION_NODE 24
 #define RETURN_NODE 25
 #define BREAKPOINT_NODE 26
+#define FIELD_NODE 27
 
 
 typedef struct ParamList
@@ -134,7 +135,7 @@ struct tnode *makeNUMNode(int n);
 struct tnode *makeIDNode(char *varname);
 
 //------------------------------------------------------------
-
+ 
 struct ParamList* create_param_list(Typetable* type,char* name);
 
 struct ParamList* append_param_list(struct ParamList* head,struct ParamList* new_elem);

@@ -34,6 +34,7 @@
 "breakpoint" {return BREAKPOINT;}
 "type" {return TYPE;}
 "endtype" {return ENDTYPE;}
+"NULL" {return PNULL;}
 "<" {return LT;}
 ">" {return GT;}
 "<=" {return LTE;}
@@ -53,6 +54,7 @@
 "," {return *yytext;}
 "{" {return *yytext;}
 "}" {return *yytext;}
+"." {return *yytext;}
 ["][a-zA-Z0-9_ ]*["] {
     // printf("%s\n",yytext);
     yylval.no = createNode(-1,1,-1,TLookup("str"),NULL,yytext,CONST_NODE,NULL,NULL);

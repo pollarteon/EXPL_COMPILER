@@ -36,7 +36,7 @@ program : PBEGIN Declarations Slist END ';'{
     printf("Preorder of Syntax Tree : ");
     preorder($3);
     printf("\n\n");
-    evaluator($3);
+    
     int result_reg =code_gen($3,target_file);
     exit(1);
    }
