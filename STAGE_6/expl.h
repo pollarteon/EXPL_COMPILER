@@ -26,7 +26,9 @@
 #define RETURN_NODE 25
 #define BREAKPOINT_NODE 26
 #define FIELD_NODE 27
-
+#define INITIALIZE_NODE 28
+#define ALLOC_NODE 29
+#define FREE_NODE 30
 
 typedef struct ParamList
 {

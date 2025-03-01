@@ -35,6 +35,9 @@
 "type" {return TYPE;}
 "endtype" {return ENDTYPE;}
 "NULL" {return PNULL;}
+"initialize" {return INITIALIZE;}
+"alloc" {return ALLOC;}
+"free" {return FREE;}
 "<" {return LT;}
 ">" {return GT;}
 "<=" {return LTE;}

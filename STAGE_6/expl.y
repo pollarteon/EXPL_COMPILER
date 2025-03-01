@@ -19,7 +19,7 @@
   int integer;
   char* string;
 }
-%token  PLUS MINUS MUL DIV MOD PBEGIN READ WRITE  IF ELSE THEN ENDIF ENDWHILE WHILE OR AND LT GT LTE GTE EQUALS NOTEQUALS DO BREAK CONTINUE DECL ENDDECL INT STR MAIN RETURN BREAKPOINT TYPE ENDTYPE PNULL
+%token  PLUS MINUS MUL DIV MOD PBEGIN READ WRITE  IF ELSE THEN ENDIF ENDWHILE WHILE OR AND LT GT LTE GTE EQUALS NOTEQUALS DO BREAK CONTINUE DECL ENDDECL INT STR MAIN RETURN BREAKPOINT TYPE ENDTYPE PNULL ALLOC INITIALIZE FREE
 %token <no> NUM STRING END ID
 %type <no> expr program Slist Stmt
 %type <no> InputStmt OutputStmt AsgStmt WhileStmt Ifstmt 
@@ -27,6 +27,7 @@
 %type <no> Identifier index
 %type <no>  FdefBlock MainBlock Gdecl GidList Gid
 %type <no> Fdef  LdeclBlock Body LdecList Ldecl IdList Lid Field
+%type <no>  initializeStmt AllocStmt
 %type <string> Type TypeName
 %type <plist> ParamList Param
 %type <arglist> ArgList
@@ -244,20 +245,33 @@ Fdef : Type ID '(' ParamList ')' '{' LdeclBlock Body '}' {
     printf("ERROR: FUNCTION NOT DECLARED %s\n",$2->varname);
     return -1;
   }
+  //checking return type equivalence
+  if(strcmp(definition_type,Gentry->type->name)!=0){
+    printf("ERROR: FUNCTION RETURN TYPE NOT MATCHING WITH DECLARATION\n");
+    return -1;
+  }
+
   //checking param equivalence
   if(Gentry->param_list==NULL){
-    FILE* target_file = fopen("code.xsm","w");
-    print_Ltable();
-    printf("Preorder of Syntax Tree : ");
-    preorder($7);
-    printf("\n\n");
-    returnStmt_checker($7,TLookup(definition_type)); //return statement checker..............
-    fprintf(target_file,"F%d:\n",Gentry->flabel);
-    function_begin_code_gen(target_file,Ltable);
-    code_gen($7,target_file);
-    L_cleanup();
-    local_binding=1;
-    param_binding=1;
+    FILE* target_file = fopen("code.xsm","a");
+    if(!begin_flag){ //if we are generating the first function the header generated
+        fclose(target_file);
+        target_file = fopen("code.xsm","w");
+        header_code_gen(target_file);
+        begin_flag=1;
+      }
+      print_Ltable();
+      printf("Preorder of Syntax Tree : ");
+      preorder($7);
+      printf("\n\n");
+      returnStmt_checker($7,TLookup(definition_type)); //return statement checker..............
+      fprintf(target_file,"F%d:\n",Gentry->flabel);
+      function_begin_code_gen(target_file,Ltable);
+      code_gen($7,target_file);
+      L_cleanup();
+      local_binding=1;
+      param_binding=1;
+      fclose(target_file);
   }else{
     printf("ERROR: FUNCTION DECLARATION UNMATCHED\n");
     return -1;
@@ -413,6 +427,10 @@ Stmt : InputStmt {$$=$1;}
 |ContinueStmt {$$=$1;}
 |ReturnStmt {$$=$1;}
 |BreakpointStmt {$$=$1;}
+|initializeStmt {$$=$1;}
+|AllocStmt {$$=$1;}
+
+
 
 ;
 
@@ -447,6 +465,12 @@ WhileStmt : WHILE '(' expr ')' DO Slist ENDWHILE ';' {$$ = makeNonLeafNode($3,$6
 DoWhileStmt : DO Slist WHILE '(' expr ')' ';' {$$ = makeNonLeafNode($5,$2,DO_WHILE_NODE,"_");}
 
 ReturnStmt : RETURN expr ';' {$$ = makeNonLeafNode($2,NULL,RETURN_NODE,"_");}
+
+initializeStmt : Identifier '=' INITIALIZE '(' ')' ';' {$$ = makeNonLeafNode($1,NULL,INITIALIZE_NODE,"_");}
+
+AllocStmt : Identifier '=' ALLOC '(' expr ')' ';' {$$=makeNonLeafNode($1,$5,ALLOC_NODE,"_");}
+
+;
 
 expr : expr PLUS expr  {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"+");}
   | expr MINUS expr   {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"-");}
@@ -657,7 +681,7 @@ void yyerror(char const *s)
 
 
 int main(void) {
-  FILE* input_file = fopen("input.txt","r");
+  FILE* input_file = fopen("input.expl","r");
   yyin = input_file;
   TypeTableCreate();
   yyparse();

@@ -210,6 +210,30 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
             exit(1);
         }
     }
+    else if(temp->nodetype == INITIALIZE_NODE){
+
+        //checking if the identifer is int (the identifer is used to store return val of initialize()function)
+        struct tnode* identifier_node = l;
+        int symbol_table = check_identifier(identifier_node);
+        if(symbol_table==1){// identifier is in Global symbol table
+            if(strcmp(l->Gentry->type->name,"int")!=0){
+                printf("ERROR: return type of initialize is int ;storing into a non-int variable ! %s \n",l->Gentry->name);
+                exit(1);
+            }
+        }
+        //setting type of initialize node as  int (may not be required)
+        temp->type = TLookup("int");
+    }
+    else if(temp->nodetype == ALLOC_NODE){
+        struct tnode* identifier_node =  l;
+        struct tnode* arguement_node = r;
+        check_identifier(l); //to check if the identifier has been declared atleast;
+        //checking the type of the arguement 
+        if(strcmp(r->type->name,"int")!=0){
+            printf("ERROR: cannot pass non-int type arguement to alloc()\n");
+            exit(1);
+        }
+    }
     else if (temp->nodetype == IF_NODE || temp->nodetype == WHILE_NODE || temp->nodetype == DO_WHILE_NODE || temp->nodetype==IF_ELSE_NODE)
     {
         if (strcmp(l->type->name,"bool")) //if gaurd expression node is not an boolean type
@@ -538,7 +562,7 @@ int check_identifier(struct tnode* IDnode){
     
     if(Gentry!=NULL){
         IDnode->type=Gentry->type;
-    return 1;
+        return 1;
     } 
 }
 
@@ -785,6 +809,12 @@ void preorder(struct tnode *root)
     }
     else if(root->nodetype==FIELD_NODE){
         printf("field ");
+    }
+    else if(root->nodetype==INITIALIZE_NODE){
+        printf("initialize ");
+    }
+    else if(root->nodetype==ALLOC_NODE){
+        printf("alloc ");
     }
     else if (root->nodetype == CONST_NODE)
     {

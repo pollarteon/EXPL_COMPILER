@@ -89,10 +89,13 @@ extern int yydebug;
     TYPE = 290,                    /* TYPE  */
     ENDTYPE = 291,                 /* ENDTYPE  */
     PNULL = 292,                   /* PNULL  */
-    NUM = 293,                     /* NUM  */
-    STRING = 294,                  /* STRING  */
-    END = 295,                     /* END  */
-    ID = 296                       /* ID  */
+    ALLOC = 293,                   /* ALLOC  */
+    INITIALIZE = 294,              /* INITIALIZE  */
+    FREE = 295,                    /* FREE  */
+    NUM = 296,                     /* NUM  */
+    STRING = 297,                  /* STRING  */
+    END = 298,                     /* END  */
+    ID = 299                       /* ID  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -136,10 +139,13 @@ extern int yydebug;
 #define TYPE 290
 #define ENDTYPE 291
 #define PNULL 292
-#define NUM 293
-#define STRING 294
-#define END 295
-#define ID 296
+#define ALLOC 293
+#define INITIALIZE 294
+#define FREE 295
+#define NUM 296
+#define STRING 297
+#define END 298
+#define ID 299
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
@@ -154,7 +160,7 @@ union YYSTYPE
   int integer;
   char* string;
 
-#line 158 "y.tab.h"
+#line 164 "y.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

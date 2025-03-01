@@ -1,0 +1,37 @@
+decl
+  int i;
+  int f();
+  int heap[1024];
+enddecl
+int f(){
+  decl 
+    
+  enddecl
+  begin
+    i =0;
+    while(i<1024)do
+      heap[i]=-1;
+      i=i+1;
+    endwhile;  
+  end
+}
+int main()
+{
+  decl
+  int num2,num1;
+  str red;
+  enddecl
+  begin
+  read(num1);
+  read(num2);
+  read(i);
+  write(i+543);
+  write(i);
+  breakpoint;
+  i=initialize();
+  write(i);
+  write(num1);
+  write(num2);
+return 0;
+  end
+}
