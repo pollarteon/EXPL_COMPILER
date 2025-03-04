@@ -83,8 +83,8 @@ typedef struct Fieldlist{
 typedef struct tnode
 {
     int val;                    // For NUM nodes
-    char *varname;              // for ID nodes(initialisation) and for FUNCTION_NODES
-    int nodetype;               // info aboout non leaf Nodes
+    char *varname;              // for ID nodes(initialisation) / FUNCTION_NODES / for storing the FIELD names
+    int nodetype;               // info about non leaf Nodes
     char *op;                   // indicates the opertor
     int size;                   //size of variable
     int row;                    //row for 1D /2D ARRAYS

@@ -38,7 +38,7 @@ int address_of_code_gen(struct tnode* t, FILE* target_file);
 int dereference_code_gen(struct tnode* t , FILE* target_file);
 void initialize_code_gen(struct tnode* t,FILE* target_file);
 void alloc_code_gen(struct tnode* t ,FILE* target_file);
-int field_code_gen(struct tnode* t,FILE* target_file);
+int field_code_gen(struct tnode* t,FILE* target_file,int expr);
 
 void header_code_gen(FILE* target_file);
 void function_begin_code_gen(FILE* target_file, struct Lsymbol* Ltable);

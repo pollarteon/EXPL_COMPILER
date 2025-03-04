@@ -224,14 +224,14 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
         //setting type of initialize node as  int (may not be required)
         temp->type = TLookup("int");
     }
-    else if(temp->nodetype == ALLOC_NODE){
-        struct tnode* identifier_node =  l;
-        struct tnode* arguement_node = r;
-        check_identifier(l); //to check if the identifier has been declared atleast;
-        //checking the type of the arguement 
-        if(strcmp(r->type->name,"int")!=0){
-            printf("ERROR: cannot pass non-int type arguement to alloc()\n");
-            exit(1);
+    else if(temp->nodetype==FREE_NODE){
+        struct tnode* identifer_node = l;
+        if(identifer_node->nodetype!=FIELD_NODE){//checking whether we are freeing a user-defined datatype variable
+            struct Typetable* type = identifer_node->type;
+            if(strcmp(type->name,"int")==0 || strcmp(type->name,"str")==0){
+                printf("Freeing a primitive Data-type variable\n");
+                return NULL;
+            }
         }
     }
     else if (temp->nodetype == IF_NODE || temp->nodetype == WHILE_NODE || temp->nodetype == DO_WHILE_NODE || temp->nodetype==IF_ELSE_NODE)
@@ -827,6 +827,9 @@ void preorder(struct tnode *root)
     }
     else if(root->nodetype==ALLOC_NODE){
         printf("alloc ");
+    }
+    else if(root->nodetype==FREE_NODE){
+        printf("free ");
     }
     else if (root->nodetype == CONST_NODE)
     {

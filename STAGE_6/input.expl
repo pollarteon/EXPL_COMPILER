@@ -13,19 +13,34 @@ endtype
 
 decl
   int i;
-  linkedlist ll;
+  linkedlist ll,ll2;
 enddecl
 
 int main()
 {
   decl
   str i;
+  linkedlist ll3;
   enddecl
   begin
   i = initialize();
-  ll=alloc(8);
+  ll=alloc();
+  ll2=alloc();
+  ll3=alloc();
   breakpoint;
-  write(ll.data2);
+  ll2.next=alloc();
+  ll2.next.next =alloc();
+  read(ll2.data2);
+  read(ll2.next.data1);
+  read(ll2.next.next.data2);
+  breakpoint;
+  write(ll3);
+  write(ll2);
+  write(ll2.next);
+  write(ll2.next.next.data2);
+  write(ll2.data2);
+  
+
 return 0;
   end
 }

@@ -174,8 +174,10 @@ void alloc_code_gen(struct tnode *t, FILE *target_file)
 {
     struct tnode* identifier_node = t->left;
     int identifier_address;
-    int symbol_table = check_identifier(identifier_node);
+    int alloc_reg= getReg();
     int reg_num = getReg();
+    int symbol_table;
+    int address_reg;
     fprintf(target_file, "MOV R%d, \"Alloc\"\n", reg_num);
     fprintf(target_file, "PUSH R%d\n", reg_num); // function code
     fprintf(target_file, "MOV R%d, 8\n",reg_num);
@@ -184,51 +186,95 @@ void alloc_code_gen(struct tnode *t, FILE *target_file)
     fprintf(target_file, "PUSH R1\n");           // blank arguement 3
     fprintf(target_file, "PUSH R1\n");           // for return val addr
     fprintf(target_file, "CALL 0\n");            // calling library
-    fprintf(target_file, "POP R%d\n", reg_num);  // pops After module call (return value)
-    fprintf(target_file, "POP R1\n");
-    fprintf(target_file, "POP R1\n");
-    fprintf(target_file, "POP R1\n");
-    fprintf(target_file, "POP R1\n");
-    
-    if (symbol_table == 1)
-    { // identifier is in the Gsymbol Table
-        identifier_address = t->left->Gentry->binding;
-        fprintf(target_file, "MOV [%d], R%d\n", identifier_address, reg_num);
-        freeReg();
-        return;
+    fprintf(target_file, "POP R%d\n", alloc_reg);  // pops After module call (return value)
+    fprintf(target_file, "POP R%d\n",reg_num);
+    fprintf(target_file, "POP R%d\n",reg_num);
+    fprintf(target_file, "POP R%d\n",reg_num);
+    fprintf(target_file, "POP R%d\n",reg_num);
+
+    if(identifier_node->nodetype==FIELD_NODE){
+        address_reg = field_code_gen(identifier_node,target_file,0); //stores the heap address
+        symbol_table = check_identifier(identifier_node->left);
+        fprintf(target_file,"MOV [R%d], R%d\n",address_reg,alloc_reg);
+        freeReg();//address_reg
+        freeReg();//reg_num
+        freeReg();//alloc_reg
+        return ;
+    }else{
+        address_reg=reg_num;
+        symbol_table = check_identifier(identifier_node);
+        if(symbol_table==1){
+            identifier_address = identifier_node->Gentry->binding;
+            fprintf(target_file, "MOV [%d], R%d\n", identifier_address, alloc_reg);
+            freeReg();//freeing reg_num
+            freeReg();//freeing alloc_reg
+            return;
+        }else{
+            identifier_address=identifier_node->Lentry->binding;
+            int L_address_reg = getReg();
+            fprintf(target_file, "MOV R%d, BP\n", L_address_reg);
+            fprintf(target_file, "ADD R%d, %d\n", L_address_reg, identifier_address);
+            fprintf(target_file, "MOV [R%d], R%d\n", L_address_reg, alloc_reg);
+            freeReg();//freeing L_address_reg
+            freeReg();//freeing reg_num
+            freeReg();//freeing alloc_reg
+            return;
+        }
     }
-    else
-    { // idenitifer is in Lsymbol Table
-        identifier_address = t->left->Lentry->binding;
-        int address_reg = getReg();
-        fprintf(target_file, "MOV R%d, BP\n", address_reg);
-        fprintf(target_file, "ADD R%d, %d\n", address_reg, t->left->Lentry->binding);
-        fprintf(target_file, "MOV [R%d], R%d\n", address_reg, reg_num);
-        freeReg();
-        freeReg();
-        return;
-    }
-    
+     
 }
 
-int field_code_gen(struct tnode* t,FILE* target_file){
+int field_code_gen(struct tnode* t, FILE* target_file,int expr) {
     struct tnode* identifier_node = t->left;
+    struct Typetable* type_of_identifier;
     int symbol_table = check_identifier(identifier_node);
-    //step 1 getting the identifer address and move it into a register..
+    
+    // Step 1: Load identifier's address into a register
     int id_reg = getReg();
-    if(symbol_table==1){//GLOBAL variable
-        printf("%s (%d)\n",identifier_node->Gentry->name,identifier_node->Gentry->binding);
-        fprintf(target_file,"MOV R%d, [%d]\n",id_reg,identifier_node->Gentry->binding);
-    }else{//LOCAL variable
-        printf("%s (%d)\n",identifier_node->Lentry->name,identifier_node->Lentry->binding);
+    if (symbol_table == 1) { // Global variable
+        type_of_identifier = identifier_node->Gentry->type;
+        fprintf(target_file, "MOV R%d, [%d]\n", id_reg, identifier_node->Gentry->binding);
+    } else { // Local variable
         int address_reg = getReg();
+        type_of_identifier = identifier_node->Lentry->type;
         fprintf(target_file, "MOV R%d, BP\n", address_reg);
-        fprintf(target_file, "ADD R%d, %d\n", address_reg, t->left->Lentry->binding);
-        fprintf(target_file, "MOV R%d, [R%d]\n", id_reg, address_reg );
+        fprintf(target_file, "ADD R%d, %d\n", address_reg, identifier_node->Lentry->binding);
+        fprintf(target_file, "MOV R%d, [R%d]\n", id_reg, address_reg); // Dereference to get heap address
         freeReg();
     }
-    return id_reg;
-    //now id_reg contains the heap address of the identifier
+
+    struct Fieldlist* fields_of_identifier = type_of_identifier->fields;
+    struct tnode* curr_field_node = identifier_node->left;
+    int fieldIndex;
+
+    if (fields_of_identifier == NULL) {
+        return id_reg;
+    }
+
+    // Step 2: Traverse the field chain
+    while (curr_field_node != NULL) {
+        struct Fieldlist* field = FLookup(type_of_identifier, curr_field_node->varname);
+        if (field == NULL) {
+            printf("Error: Field %s not found in type %s\n", curr_field_node->varname, type_of_identifier->name);
+            exit(1);
+        }
+
+        fieldIndex = field->fieldIndex;
+        printf("fieldIndex : %d\n", fieldIndex);
+
+        // Add field offset to move to the correct address
+        fprintf(target_file, "ADD R%d, %d\n", id_reg, fieldIndex);
+        if (curr_field_node->left != NULL) { 
+            // Only dereference if there are more fields to traverse
+            fprintf(target_file, "MOV R%d, [R%d]\n", id_reg, id_reg);
+        }
+
+        type_of_identifier = field->type;
+        curr_field_node = curr_field_node->left;
+    }
+    if(expr) // should return a register with the value at that heap address
+    fprintf(target_file,"MOV R%d, [R%d]\n",id_reg,id_reg);
+    return id_reg; // Register contains heap address of last field
 }
 
 int array_code_gen(struct tnode *t, FILE *target_file)
@@ -274,6 +320,7 @@ void read_code_gen(struct tnode *t, FILE *target_file)
     int reg_num = getReg();
     int storage_location;
     struct tnode *identifier_node = t->left;
+    printf("%d\n",identifier_node->nodetype);
     if (identifier_node->nodetype == ARRAY_NODE)
     {
         struct Gsymbol *Gentry = identifier_node->left->Gentry;
@@ -300,7 +347,7 @@ void read_code_gen(struct tnode *t, FILE *target_file)
             freeReg();
         }
     }
-    else
+    else if(identifier_node->nodetype==IDENTIFIER_NODE)
     {
         struct Gsymbol *Gentry = identifier_node->Gentry;
         struct Lsymbol *Lentry = identifier_node->Lentry;
@@ -328,6 +375,13 @@ void read_code_gen(struct tnode *t, FILE *target_file)
             storage_location = identifier_node->Gentry->binding;
             fprintf(target_file, "MOV R%d, %d\n", reg_result, storage_location);
         }
+    }
+    else if(identifier_node->nodetype==FIELD_NODE){
+        if(strcmp(identifier_node->type->name,"int")!=0 && strcmp(identifier_node->type->name,"str")!=0){
+            printf("ERROR: reading a non-primitve data-type var %s\n",identifier_node->type->name);
+            exit(1);
+        }
+        reg_result = field_code_gen(identifier_node,target_file,0);//reg_result now contains the heap address of the field
     }
     // printf("%d\n",storageLocation);
     // calling read through library
@@ -701,7 +755,7 @@ int code_gen(struct tnode *t, FILE *target_file)
         return reg;
     }
     else if(t->nodetype==FIELD_NODE){
-        int reg =field_code_gen(t,target_file);
+        int reg =field_code_gen(t,target_file,1);
         return reg;
     }
     else if (t->nodetype == INITIALIZE_NODE)

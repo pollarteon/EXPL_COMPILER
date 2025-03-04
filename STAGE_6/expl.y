@@ -27,7 +27,7 @@
 %type <no> Identifier index
 %type <no>  FdefBlock MainBlock Gdecl GidList Gid
 %type <no> Fdef  LdeclBlock Body LdecList Ldecl IdList Lid Field
-%type <no>  initializeStmt AllocStmt
+%type <no>  initializeStmt AllocStmt FreeStmt
 %type <string> Type TypeName
 %type <plist> ParamList Param
 %type <arglist> ArgList
@@ -433,6 +433,7 @@ Stmt : InputStmt {$$=$1;}
 |BreakpointStmt {$$=$1;}
 |initializeStmt {$$=$1;}
 |AllocStmt {$$=$1;}
+|FreeStmt {$$=$1;}
 
 
 
@@ -472,8 +473,9 @@ ReturnStmt : RETURN expr ';' {$$ = makeNonLeafNode($2,NULL,RETURN_NODE,"_");}
 
 initializeStmt : Identifier '=' INITIALIZE '(' ')' ';' {$$ = makeNonLeafNode($1,NULL,INITIALIZE_NODE,"_");}
 
-AllocStmt : Identifier '=' ALLOC '(' expr ')' ';' {$$=makeNonLeafNode($1,$5,ALLOC_NODE,"_");}
+AllocStmt : Identifier '=' ALLOC '(' ')' ';' {$$=makeNonLeafNode($1,NULL,ALLOC_NODE,"_");}
 
+FreeStmt : FREE '(' Identifier ')' ';' {$$=makeNonLeafNode($3,NULL,FREE_NODE,"_");}
 ;
 
 expr : expr PLUS expr  {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"+");}
@@ -636,7 +638,7 @@ Identifier : ID {
     curr_type = temp->Lentry->type;
   }
   else{
-    printf("ERROR: varaible not declared !! :%s\n",temp->varname);
+    printf("ERROR: variable not declared !! :%s\n",temp->varname);
     return -1;
   }
   while(temp!=NULL){
