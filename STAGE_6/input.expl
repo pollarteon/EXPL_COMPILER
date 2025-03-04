@@ -1,37 +1,31 @@
+type
+  linkedlist{
+    int data1;
+    int data2;
+    int data3;
+    int data4;
+    int data5;
+    int data6;
+    int data7;
+    linkedlist next;
+  }
+endtype
+
 decl
   int i;
-  int f();
-  int heap[1024];
+  linkedlist ll;
 enddecl
-int f(){
-  decl 
-    
-  enddecl
-  begin
-    i =0;
-    while(i<1024)do
-      heap[i]=-1;
-      i=i+1;
-    endwhile;  
-  end
-}
+
 int main()
 {
   decl
-  int num2,num1;
-  str red;
+  str i;
   enddecl
   begin
-  read(num1);
-  read(num2);
-  read(i);
-  write(i+543);
-  write(i);
+  i = initialize();
+  ll=alloc(8);
   breakpoint;
-  i=initialize();
-  write(i);
-  write(num1);
-  write(num2);
+  write(ll.data2);
 return 0;
   end
 }

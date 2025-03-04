@@ -170,14 +170,15 @@ void initialize_code_gen(struct tnode *t, FILE *target_file)
     }
 }
 
-int alloc_code_gen(struct tnode *t, FILE *target_file)
+void alloc_code_gen(struct tnode *t, FILE *target_file)
 {
     struct tnode* identifier_node = t->left;
+    int identifier_address;
     int symbol_table = check_identifier(identifier_node);
     int reg_num = getReg();
     fprintf(target_file, "MOV R%d, \"Alloc\"\n", reg_num);
     fprintf(target_file, "PUSH R%d\n", reg_num); // function code
-    fprintf(target_file, "MOV R%d, 8",reg_num);
+    fprintf(target_file, "MOV R%d, 8\n",reg_num);
     fprintf(target_file, "PUSH R%d\n", reg_num); // arguement 1 (size of allocation)
     fprintf(target_file, "PUSH R%d\n", reg_num); // arguement 2(not used)
     fprintf(target_file, "PUSH R1\n");           // blank arguement 3
@@ -189,6 +190,45 @@ int alloc_code_gen(struct tnode *t, FILE *target_file)
     fprintf(target_file, "POP R1\n");
     fprintf(target_file, "POP R1\n");
     
+    if (symbol_table == 1)
+    { // identifier is in the Gsymbol Table
+        identifier_address = t->left->Gentry->binding;
+        fprintf(target_file, "MOV [%d], R%d\n", identifier_address, reg_num);
+        freeReg();
+        return;
+    }
+    else
+    { // idenitifer is in Lsymbol Table
+        identifier_address = t->left->Lentry->binding;
+        int address_reg = getReg();
+        fprintf(target_file, "MOV R%d, BP\n", address_reg);
+        fprintf(target_file, "ADD R%d, %d\n", address_reg, t->left->Lentry->binding);
+        fprintf(target_file, "MOV [R%d], R%d\n", address_reg, reg_num);
+        freeReg();
+        freeReg();
+        return;
+    }
+    
+}
+
+int field_code_gen(struct tnode* t,FILE* target_file){
+    struct tnode* identifier_node = t->left;
+    int symbol_table = check_identifier(identifier_node);
+    //step 1 getting the identifer address and move it into a register..
+    int id_reg = getReg();
+    if(symbol_table==1){//GLOBAL variable
+        printf("%s (%d)\n",identifier_node->Gentry->name,identifier_node->Gentry->binding);
+        fprintf(target_file,"MOV R%d, [%d]\n",id_reg,identifier_node->Gentry->binding);
+    }else{//LOCAL variable
+        printf("%s (%d)\n",identifier_node->Lentry->name,identifier_node->Lentry->binding);
+        int address_reg = getReg();
+        fprintf(target_file, "MOV R%d, BP\n", address_reg);
+        fprintf(target_file, "ADD R%d, %d\n", address_reg, t->left->Lentry->binding);
+        fprintf(target_file, "MOV R%d, [R%d]\n", id_reg, address_reg );
+        freeReg();
+    }
+    return id_reg;
+    //now id_reg contains the heap address of the identifier
 }
 
 int array_code_gen(struct tnode *t, FILE *target_file)
@@ -660,9 +700,17 @@ int code_gen(struct tnode *t, FILE *target_file)
         int reg = address_of_code_gen(t, target_file);
         return reg;
     }
+    else if(t->nodetype==FIELD_NODE){
+        int reg =field_code_gen(t,target_file);
+        return reg;
+    }
     else if (t->nodetype == INITIALIZE_NODE)
     {
         initialize_code_gen(t, target_file);
+        return -1;
+    }
+    else if (t->nodetype == ALLOC_NODE){
+        alloc_code_gen(t,target_file);
         return -1;
     }
     else if (t->nodetype == OPERATOR_NODE)

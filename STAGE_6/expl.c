@@ -426,11 +426,23 @@ struct Fieldlist* FLookup(struct Typetable *type,char* name){
 }
 
 struct Fieldlist* Finstall(struct Fieldlist* fields,struct Fieldlist* field){
+    
+
     struct Fieldlist* temp = fields;
-    if(temp==NULL) return field;
-    while(temp->next!=NULL){
-        temp=temp->next;
+    if(temp==NULL)return field;
+    // Traverse the existing field list to check for duplicate names
+    while (temp != NULL && temp->next!=NULL) {
+        if (strcmp(temp->name, field->name) == 0) {
+            printf("ERROR: Duplicate field name '%s' in user-defined type\n", field->name);
+            exit(1); // or return NULL, depending on how you want to handle it
+        }
+        temp = temp->next;
     }
+    if (strcmp(temp->name, field->name) == 0) {
+            printf("ERROR: Duplicate field name '%s' in user-defined type\n", field->name);
+            exit(1); // or return NULL, depending on how you want to handle it
+     }
+    // Add the new field to the list
     temp->next = field;
     return fields;
 }

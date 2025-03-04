@@ -6,11 +6,11 @@ extern int begin_flag;
 extern int heap_block_size;
 extern int initialize_heap_flag;
 
-struct memstruct {
-    int freeBlockIndex;
-    int data;
-    int isFree; // 1 if free 0 if reserved
-}heap[HEAP_SIZE];
+// struct memstruct {
+//     int freeBlockIndex;
+//     int data;
+//     int isFree; // 1 if free 0 if reserved
+// }heap[HEAP_SIZE];
 
 typedef struct LabelStack{
     int break_label;
@@ -38,12 +38,12 @@ int address_of_code_gen(struct tnode* t, FILE* target_file);
 int dereference_code_gen(struct tnode* t , FILE* target_file);
 void initialize_code_gen(struct tnode* t,FILE* target_file);
 void alloc_code_gen(struct tnode* t ,FILE* target_file);
+int field_code_gen(struct tnode* t,FILE* target_file);
 
 void header_code_gen(FILE* target_file);
 void function_begin_code_gen(FILE* target_file, struct Lsymbol* Ltable);
 void function_end_code_gen(FILE* target_file,struct Lsymbol* Ltable);
-void initialize_heap();
-int alloc_heap();
+
 // void push_arguements(FILE* target_file,struct Lsymbol* Ltable);
 
 int evaluator(struct tnode* t);

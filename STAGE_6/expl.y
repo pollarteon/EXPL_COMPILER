@@ -65,9 +65,13 @@ TypeDef : ID '{' FieldDeclList '}' {
   struct Typetable* declared_type = TLookup(type_name);
   struct Fieldlist* fields = (declared_type)->fields;
   struct Fieldlist* temp = fields;
-  int fieldIndex = 1;
+  int fieldIndex = 0;
   int total_size =0;
   while(temp!=NULL){
+    if(fieldIndex>7){
+      printf("ERROR: no more than 8 member fields for a user-defined type is allowed %s \n",type_name);
+      return -1;
+    }
     temp->fieldIndex = fieldIndex++;
     if(temp->type->size==-1){
      if(strcmp(temp->type->name,type_name)==0){
