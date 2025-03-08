@@ -29,6 +29,7 @@
 #define INITIALIZE_NODE 28
 #define ALLOC_NODE 29
 #define FREE_NODE 30
+#define NULL_NODE 31
 
 typedef struct ParamList
 {

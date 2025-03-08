@@ -34,7 +34,10 @@
 "breakpoint" {return BREAKPOINT;}
 "type" {return TYPE;}
 "endtype" {return ENDTYPE;}
-"NULL" {return PNULL;}
+"null" {
+        yylval.no = createNode(-1,-1,-1,TLookup("null"),NULL,NULL,NULL_NODE,NULL,NULL);
+        return PNULL;
+    }
 "initialize" {return INITIALIZE;}
 "alloc" {return ALLOC;}
 "free" {return FREE;}

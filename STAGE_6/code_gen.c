@@ -212,9 +212,17 @@ void alloc_code_gen(struct tnode *t, FILE *target_file)
         }else{
             identifier_address=identifier_node->Lentry->binding;
             int L_address_reg = getReg();
-            fprintf(target_file, "MOV R%d, BP\n", L_address_reg);
-            fprintf(target_file, "ADD R%d, %d\n", L_address_reg, identifier_address);
-            fprintf(target_file, "MOV [R%d], R%d\n", L_address_reg, alloc_reg);
+            if (identifier_node->Lentry->isArg)
+            { // for accessing arguement from the stack
+                fprintf(target_file, "MOV R%d, BP\n", L_address_reg);
+                fprintf(target_file, "SUB R%d, %d\n", L_address_reg, 2 + identifier_address);
+                fprintf(target_file, "MOV [R%d], R%d\n", L_address_reg, alloc_reg);
+            }else{//if Lentry is a local variable
+                fprintf(target_file, "MOV R%d, BP\n", L_address_reg);
+                fprintf(target_file, "ADD R%d, %d\n", L_address_reg, identifier_address);
+                fprintf(target_file, "MOV [R%d], R%d\n", L_address_reg, alloc_reg);
+            }
+           
             freeReg();//freeing L_address_reg
             freeReg();//freeing reg_num
             freeReg();//freeing alloc_reg
@@ -234,12 +242,21 @@ int field_code_gen(struct tnode* t, FILE* target_file,int expr) {
     if (symbol_table == 1) { // Global variable
         type_of_identifier = identifier_node->Gentry->type;
         fprintf(target_file, "MOV R%d, [%d]\n", id_reg, identifier_node->Gentry->binding);
-    } else { // Local variable
+    } else { 
         int address_reg = getReg();
         type_of_identifier = identifier_node->Lentry->type;
+        if (identifier_node->Lentry->isArg)
+            { // for accessing arguement from the stack
+                fprintf(target_file, "MOV R%d, BP\n", address_reg);
+                fprintf(target_file, "SUB R%d, %d\n", address_reg, 2 + identifier_node->Lentry->binding);
+                fprintf(target_file, "MOV R%d, [R%d]\n", id_reg, address_reg);
+            }
+        else{// Local variable
         fprintf(target_file, "MOV R%d, BP\n", address_reg);
         fprintf(target_file, "ADD R%d, %d\n", address_reg, identifier_node->Lentry->binding);
         fprintf(target_file, "MOV R%d, [R%d]\n", id_reg, address_reg); // Dereference to get heap address
+       
+        }
         freeReg();
     }
 
@@ -260,8 +277,7 @@ int field_code_gen(struct tnode* t, FILE* target_file,int expr) {
         }
 
         fieldIndex = field->fieldIndex;
-        printf("fieldIndex : %d\n", fieldIndex);
-
+   
         // Add field offset to move to the correct address
         fprintf(target_file, "ADD R%d, %d\n", id_reg, fieldIndex);
         if (curr_field_node->left != NULL) { 
@@ -320,7 +336,7 @@ void read_code_gen(struct tnode *t, FILE *target_file)
     int reg_num = getReg();
     int storage_location;
     struct tnode *identifier_node = t->left;
-    printf("%d\n",identifier_node->nodetype);
+    // printf("%d\n",identifier_node->nodetype);
     if (identifier_node->nodetype == ARRAY_NODE)
     {
         struct Gsymbol *Gentry = identifier_node->left->Gentry;
@@ -772,7 +788,13 @@ int code_gen(struct tnode *t, FILE *target_file)
         // if node is assignment operator
         if (strcmp(t->op, "=") == 0)
         {
-            int reg2 = code_gen(t->right, target_file);
+            int reg2;
+            if(t->right->nodetype==NULL_NODE){
+                reg2 =getReg();
+                fprintf(target_file,"MOV R%d, \"0x0\"\n",reg2);
+            }else{
+                reg2 = code_gen(t->right, target_file);
+            }
             if (t->left->nodetype == ARRAY_NODE)
             {
                 if (t->left->right->nodetype != _2D_ARRAY_NODE)
@@ -820,7 +842,10 @@ int code_gen(struct tnode *t, FILE *target_file)
             }
             if (t->left->nodetype == FIELD_NODE)
             {
-                printf("FIELDS will be handled later in code_gen\n");
+                int location_reg = field_code_gen(t->left,target_file,0);
+                fprintf(target_file,"MOV [R%d], R%d\n",location_reg,reg2);
+                freeReg();
+                freeReg();
                 return -1;
             }
             int storage_location;
@@ -865,7 +890,13 @@ int code_gen(struct tnode *t, FILE *target_file)
         // node is a arithmetic operator node or logical operator node
 
         int reg1 = code_gen(t->left, target_file);
-        int reg2 = code_gen(t->right, target_file);
+        int reg2 ;
+        if(t->right->nodetype==NULL_NODE){
+            reg2 = getReg();
+            fprintf(target_file,"MOV R%d, \"0x0\"\n",reg2);
+        }else{
+            reg2 = code_gen(t->right, target_file);
+        }
         if (strcmp(t->op, "+") == 0)
             fprintf(target_file, "ADD R%d, R%d\n", reg1, reg2);
         else if (strcmp(t->op, "-") == 0)

@@ -19,8 +19,8 @@
   int integer;
   char* string;
 }
-%token  PLUS MINUS MUL DIV MOD PBEGIN READ WRITE  IF ELSE THEN ENDIF ENDWHILE WHILE OR AND LT GT LTE GTE EQUALS NOTEQUALS DO BREAK CONTINUE DECL ENDDECL INT STR MAIN RETURN BREAKPOINT TYPE ENDTYPE PNULL ALLOC INITIALIZE FREE
-%token <no> NUM STRING END ID
+%token  PLUS MINUS MUL DIV MOD PBEGIN READ WRITE  IF ELSE THEN ENDIF ENDWHILE WHILE OR AND LT GT LTE GTE EQUALS NOTEQUALS DO BREAK CONTINUE DECL ENDDECL INT STR MAIN RETURN BREAKPOINT TYPE ENDTYPE  ALLOC INITIALIZE FREE
+%token <no> NUM STRING END ID PNULL
 %type <no> expr program Slist Stmt
 %type <no> InputStmt OutputStmt AsgStmt WhileStmt Ifstmt 
 %type <no> BreakStmt ContinueStmt DoWhileStmt ReturnStmt BreakpointStmt
@@ -532,7 +532,7 @@ expr : expr PLUS expr  {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"+");}
   | NUM   {$$ = $1;}
   | STRING {$$=$1;}
   | Identifier {$$=$1;}
-  
+  | PNULL {$$=$1;}
   ;
 
 ArgList : ArgList ',' expr {
@@ -675,7 +675,13 @@ Field : Field '.' ID {
 }
 ;
 
-index : expr {$$=$1;}
+index : expr {
+    if(strcmp($1->type->name,"int")!=0){
+      printf("ERROR:indexing by a non-int type \n");
+      return -1;
+    }
+    $$=$1;
+  }
 ;
 
 %%

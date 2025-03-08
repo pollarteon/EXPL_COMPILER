@@ -88,14 +88,14 @@ extern int yydebug;
     BREAKPOINT = 289,              /* BREAKPOINT  */
     TYPE = 290,                    /* TYPE  */
     ENDTYPE = 291,                 /* ENDTYPE  */
-    PNULL = 292,                   /* PNULL  */
-    ALLOC = 293,                   /* ALLOC  */
-    INITIALIZE = 294,              /* INITIALIZE  */
-    FREE = 295,                    /* FREE  */
-    NUM = 296,                     /* NUM  */
-    STRING = 297,                  /* STRING  */
-    END = 298,                     /* END  */
-    ID = 299                       /* ID  */
+    ALLOC = 292,                   /* ALLOC  */
+    INITIALIZE = 293,              /* INITIALIZE  */
+    FREE = 294,                    /* FREE  */
+    NUM = 295,                     /* NUM  */
+    STRING = 296,                  /* STRING  */
+    END = 297,                     /* END  */
+    ID = 298,                      /* ID  */
+    PNULL = 299                    /* PNULL  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -138,14 +138,14 @@ extern int yydebug;
 #define BREAKPOINT 289
 #define TYPE 290
 #define ENDTYPE 291
-#define PNULL 292
-#define ALLOC 293
-#define INITIALIZE 294
-#define FREE 295
-#define NUM 296
-#define STRING 297
-#define END 298
-#define ID 299
+#define ALLOC 292
+#define INITIALIZE 293
+#define FREE 294
+#define NUM 295
+#define STRING 296
+#define END 297
+#define ID 298
+#define PNULL 299
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED

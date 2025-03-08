@@ -173,31 +173,51 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
                 printf("\n\nERROR: NON-INTEGER TYPE IN ARITHMETIC OPERATION\n\n");
                 exit(1);
             }
+            if(!strcmp(l->type->name,"null") || !strcmp(r->type->name,"null")){
+                printf("ERROR:NULL type in artihmetic expression\n");
+                exit(1);
+            }
         }
         else if (strcmp(op, "=") != 0)
         {
+            if(strcmp(op,"==") && strcmp(op,"!="))
+            if(!strcmp(l->type->name,"null") || !strcmp(r->type->name,"null")){
+                printf("ERROR:NULL type in boolean expression\n");
+                exit(1);
+            }
             temp->type = TLookup("bool");
+            temp->left = l;
+            temp->right = r;
+            temp->middle = NULL;
+            return temp;
         }
         else // assignment operator
         {
-            // struct Lsymbol* left_Lentry = l->Lentry;
-            // if(left_Lentry!=NULL){
-            //     if(left_Lentry->isArg){
-            //         printf("ERROR cannot assign value to an arguement : %s\n",left_Lentry->name);
-            //         exit(1);
-            //     }
-            // }
             if(l->nodetype ==  ADDRESS_NODE){
                 printf("ERROR: & is an lval operator\n");
                 exit(1);
             }
-       
+            
             if (strcmp(l->type->name,r->type->name)) //types are not matching
             {
-                printf("%s\n", temp->op);
-                printf("%s %s\n", l->type->name, r->type->name);
-                printf("TYPE ERROR:\n");
-                exit(1);
+                if(strcmp(r->type->name,"null")==0){
+                    if(strcmp(l->type->name,"int")==0 || strcmp(l->type->name,"str")==0 ){
+                        printf("%s\n", temp->op);
+                        printf("%s %s\n", l->type->name, r->type->name);
+                        printf("TYPE ERROR:\n");
+                        exit(1);
+                    }
+                } 
+                else{
+                    printf("%s\n", temp->op);
+                    printf("%s %s\n", l->type->name, r->type->name);
+                    printf("TYPE ERROR:\n");
+                    exit(1);
+                }
+                temp->left = l;
+                temp->right = r;
+                temp->middle = NULL;
+                return temp;
             }
         }
         // printf("%s\n", temp->op);
@@ -261,33 +281,15 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
         }
         else if (r->nodetype == IDENTIFIER_NODE)
         {
-            struct Lsymbol *index_Lentry = r->Lentry;
-            struct Gsymbol *index_Gentry = r->Gentry;
-            // printf("%d\n",index_Gentry->type);
-            if(index_Lentry && strcmp(index_Lentry->type->name,"int")!=0){
-                printf("ERROR: INDEXING BY A NON_INTEGER VALUE\n");
-                exit(1);
-            }
-            else if (index_Gentry && strcmp(index_Gentry->type->name,"int")!=0)
-            {
-                printf("ERROR: INDEXING BY A NON_INTEGER VALUE\n");
-                exit(1);
-            }
-            if(index_Lentry)
-            temp->type = index_Lentry->type;
-            else
-            temp->type = index_Gentry->type;
+            int symbol_table = check_identifier(r);
+            if(symbol_table==2)//local variable
+            temp->type = r->Lentry->type;
+            else //global variable
+            temp->type = r->Gentry->type;
             
         }
         else if(r->nodetype==OPERATOR_NODE){
             temp->type = r->type;
-        }
-        else if(r->nodetype==FUNCTION_NODE){
-            struct Gsymbol* Gentry = r->left->Gentry;
-            if(strcmp(Gentry->type->name,"int")!=0 ){// if function return value is not an integer
-                printf("ERROR: CANNOT INDEX ARRAY USING A NON_INTEGER TYPE: %s\n",Gentry->name);
-                exit(1);
-            }
         }
         else if (r->nodetype == _2D_ARRAY_NODE)
         {
@@ -304,10 +306,6 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
             }
             else if(_2D_node->left->nodetype ==ARRAY_NODE){
                 struct Gsymbol* index_Gentry = _2D_node->left->left->Gentry;
-                if(strcmp(index_Gentry->type->name,"int")!=0){
-                    printf("ERROR: INDEXING BY A NON_INTEGER VALUE\n");
-                    exit(1);
-                }
                 temp->type=Gentry->type;
             }
             else if(_2D_node->left->nodetype == OPERATOR_NODE){
@@ -315,21 +313,11 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
             }
             else
             {
-                struct Lsymbol *index_Lentry = _2D_node->left->Lentry;
-                struct Gsymbol *index_Gentry = _2D_node->left->Gentry;
-                if(index_Lentry && strcmp(index_Lentry->type->name,"int")!=0){
-                    printf("ERROR: INDEXING BY A NON_INTEGER VALUE\n");
-                    exit(1);
-                }
-                else if (index_Gentry && strcmp(index_Gentry->type->name,"int")!=0)
-                {
-                    printf("ERROR: INDEXING BY A NON_INTEGER VALUE\n");
-                    exit(1);
-                }
-                if(index_Lentry)
-                temp->type = index_Lentry->type;
+                int symbol_table = check_identifier(_2D_node->left);
+                if(symbol_table==2)
+                temp->type = _2D_node->left->Lentry->type;
                 else
-                temp->type = index_Gentry->type;
+                temp->type = _2D_node->left->Gentry->type;
             }
             if (_2D_node->right->nodetype == CONST_NODE)
             {
@@ -342,10 +330,6 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
             }
             else if(_2D_node->right->nodetype ==ARRAY_NODE){
                 struct Gsymbol* index_Gentry = _2D_node->right->left->Gentry;
-                if(strcmp(index_Gentry->type->name,"int")!=0){
-                    printf("ERROR: INDEXING BY A NON_INTEGER VALUE\n");
-                    exit(1);
-                }
                 temp->type=Gentry->type;
             }
             else if(_2D_node->right->nodetype == OPERATOR_NODE){
@@ -355,15 +339,6 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
             {
                 struct Lsymbol *index_Lentry = _2D_node->right->Lentry;
                 struct Gsymbol *index_Gentry = _2D_node->right->Gentry;
-                if(index_Lentry && strcmp(index_Lentry->type->name,"int")!=0){
-                    printf("ERROR: INDEXING BY A NON_INTEGER VALUE\n");
-                    exit(1);
-                }
-                else if (index_Gentry && strcmp(index_Gentry->type->name,"int")!=0)
-                {
-                    printf("ERROR: INDEXING BY A NON_INTEGER VALUE\n");
-                    exit(1);
-                }
                 if(index_Lentry)
                 temp->type = index_Lentry->type;
                 else
@@ -385,7 +360,7 @@ void TypeTableCreate(){
     Type_table = Tinstall("int",1,NULL);
     Type_table = Tinstall("str",1,NULL);
     Type_table = Tinstall("bool",1,NULL);
-    Type_table = Tinstall("NULL",0,NULL);
+    Type_table = Tinstall("null",0,NULL);
     Type_table = Tinstall("void",0,NULL);
     Type_table = Tinstall("pointer",0,NULL);
     Type_table = Tinstall("pointer(int)",0,NULL);
@@ -830,6 +805,9 @@ void preorder(struct tnode *root)
     }
     else if(root->nodetype==FREE_NODE){
         printf("free ");
+    }
+    else if(root->nodetype==NULL_NODE){
+        printf("null ");
     }
     else if (root->nodetype == CONST_NODE)
     {
