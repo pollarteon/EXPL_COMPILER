@@ -204,8 +204,17 @@ void alloc_code_gen(struct tnode *t, FILE *target_file)
         address_reg=reg_num;
         symbol_table = check_identifier(identifier_node);
         if(symbol_table==1){
-            identifier_address = identifier_node->Gentry->binding;
-            fprintf(target_file, "MOV [%d], R%d\n", identifier_address, alloc_reg);
+            if(identifier_node->nodetype!=ARRAY_NODE){
+                identifier_address = identifier_node->Gentry->binding;
+                fprintf(target_file, "MOV [%d], R%d\n", identifier_address, alloc_reg);
+            }
+            else{
+                int index_reg = code_gen(identifier_node->right,target_file);
+                fprintf(target_file,"ADD R%d, %d\n",index_reg,identifier_node->left->Gentry->binding);
+                fprintf(target_file,"MOV [R%d], R%d\n",index_reg,alloc_reg);
+                freeReg();
+            }
+            
             freeReg();//freeing reg_num
             freeReg();//freeing alloc_reg
             return;
@@ -237,11 +246,18 @@ int field_code_gen(struct tnode* t, FILE* target_file,int expr) {
     struct Typetable* type_of_identifier;
     int symbol_table = check_identifier(identifier_node);
     
-    // Step 1: Load identifier's address into a register
+    // load identifier's address into a register
     int id_reg = getReg();
     if (symbol_table == 1) { // Global variable
         type_of_identifier = identifier_node->Gentry->type;
-        fprintf(target_file, "MOV R%d, [%d]\n", id_reg, identifier_node->Gentry->binding);
+        if(identifier_node->right==NULL)//id not an array
+            fprintf(target_file, "MOV R%d, [%d]\n", id_reg, identifier_node->Gentry->binding);
+        else{//id is an array (the right child contains the index);
+            int index_reg = code_gen(identifier_node->right,target_file);
+            fprintf(target_file,"ADD R%d, %d\n",index_reg,identifier_node->Gentry->binding);
+            fprintf(target_file,"MOV R%d, [R%d]\n",id_reg,index_reg);
+            freeReg();//freeing index_reg
+        }
     } else { 
         int address_reg = getReg();
         type_of_identifier = identifier_node->Lentry->type;

@@ -669,7 +669,23 @@ Field : Field '.' ID {
   temp->left=$3;
   $$=$1;
 }
+| ID '[' index ']' '.' ID  {
+  // printf("Array field\n");
+  $1->left =$6;
+  $1->right = $3;
+  if($3->nodetype==CONST_NODE){
+    if($3->val>=$1->Gentry->row){
+      printf("ERROR:Array Out of bounds:%s\n ",$1->Gentry->name);
+      return -1;
+    }
+  }
+  $$ =  $1;
+}
 | ID '.' ID {
+  if($1->Gentry->row>1){
+    printf("ERROR: accessing an Array value without indexing %s\n",$1->Gentry->name);
+    return -1;
+  }
   $1->left = $3;
   $$=$1;
 }
