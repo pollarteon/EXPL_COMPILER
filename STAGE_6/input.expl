@@ -1,28 +1,31 @@
-type 
-    marklist{
-        int mark;
-        marklist next;
-    }
+type
+  List
+  {
+    int data;
+    int data2;
+    List next;
+  }
 endtype
-decl
-    marklist arr[4];
-enddecl
-int main() {
-    decl
-      int i;
-    enddecl
 
-    begin
-        i = initialize();
-        arr[0]=alloc();
-        arr[0].next=alloc();
-        arr[1]=alloc();
-        read(arr[1].mark);
-        arr[0].next.mark = 45;
-        arr[0].mark =50;
-        write(arr[0].next.mark);
-        write(arr[0].mark);
-        write(arr[i].mark);
-        return 0;
-    end
+decl
+    List head;
+    int n1,n2;
+enddecl
+
+int main()
+{
+  decl
+    int length, x;
+    List p, q;
+  enddecl
+
+  begin
+    x = initialize();
+    p= alloc();
+    read(p.data);
+    read(p.data2);
+  
+
+    return 1;
+  end
 }

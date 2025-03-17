@@ -19,7 +19,9 @@
   int integer;
   char* string;
 }
-%token  PLUS MINUS MUL DIV MOD PBEGIN READ WRITE  IF ELSE THEN ENDIF ENDWHILE WHILE OR AND LT GT LTE GTE EQUALS NOTEQUALS DO BREAK CONTINUE DECL ENDDECL INT STR MAIN RETURN BREAKPOINT TYPE ENDTYPE  ALLOC INITIALIZE FREE
+%token  PLUS MINUS MUL DIV MOD PBEGIN READ WRITE  IF ELSE THEN ENDIF ENDWHILE WHILE OR AND LT GT LTE GTE EQUALS 
+%token NOTEQUALS DO BREAK CONTINUE DECL ENDDECL INT STR MAIN RETURN BREAKPOINT TYPE ENDTYPE  ALLOC INITIALIZE FREE
+%token CLASS ENDCLASS SELF EXTENDS NEW DELETE
 %token <no> NUM STRING END ID PNULL
 %type <no> expr program Slist Stmt
 %type <no> InputStmt OutputStmt AsgStmt WhileStmt Ifstmt 
@@ -28,6 +30,8 @@
 %type <no>  FdefBlock MainBlock Gdecl GidList Gid
 %type <no> Fdef  LdeclBlock Body LdecList Ldecl IdList Lid Field
 %type <no>  initializeStmt AllocStmt FreeStmt
+%type <no> ClassDefBlock ClassDefList Classdef Cname CFieldlists CFieldlists MethodDecl Mdecl MethodDefns Cfield
+
 %type <string> Type TypeName
 %type <plist> ParamList Param
 %type <arglist> ArgList
@@ -112,7 +116,31 @@ TypeName : INT {$$="int";}
   | STR {$$="str";}
   | ID {$$=$1->varname;};
   ;
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+/// CLASS DECLARATIONS SYNTAX
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+ClassDefBlock : CLASS ClassDefList ENDCLASS {}
+| {}
+;
+
+ClassDefList : ClassDefList Classdef {}
+| Classdef {}
+;
+
+Classdef : Cname '{' DECL CFieldlists MethodDecl ENDDECL MethodDefns '}' {};
+
+Cname : ID {};
+
+CFieldlists : CFieldlists Cfield {}
+| {}
+
+Cfield : ID ID ';' {}
+
+MethodDecl : MethodDecl Mdecl {}
+| Mdecl {}
+
+Mdecl : ID ID '(' ParamList ')' ';'
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 /// GLOBAL DECLARATIONS SYNTAX
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -637,10 +665,6 @@ Identifier : ID {
   else if(scope_of_var==2){//Lsymbol variable
     curr_type = temp->Lentry->type;
   }
-  else{
-    printf("ERROR: variable not declared !! :%s\n",temp->varname);
-    return -1;
-  }
   while(temp!=NULL){
     
     if(temp->left!=NULL){
@@ -672,7 +696,7 @@ Field : Field '.' ID {
 | ID '[' index ']' '.' ID  {
   // printf("Array field\n");
   $1->left =$6;
-  $1->right = $3;
+  $1->right = $3; //stores the size of the 1-D array
   if($3->nodetype==CONST_NODE){
     if($3->val>=$1->Gentry->row){
       printf("ERROR:Array Out of bounds:%s\n ",$1->Gentry->name);
@@ -682,7 +706,7 @@ Field : Field '.' ID {
   $$ =  $1;
 }
 | ID '.' ID {
-  if($1->Gentry->row>1){
+  if($1->Gentry!=NULL && $1->Gentry->row>1){
     printf("ERROR: accessing an Array value without indexing %s\n",$1->Gentry->name);
     return -1;
   }

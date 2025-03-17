@@ -1,0 +1,83 @@
+type
+  List
+  {
+    int data;
+    int data2;
+    List next;
+  }
+endtype
+class 
+Person{
+    decl
+        str name;
+        int age;
+        int printDetails();
+        str findName();
+        int createPerson(str name, int age);
+    enddecl
+    int printDetails(){
+        decl 
+        enddecl
+        begin
+            return 1;
+        end
+    }
+    str findName(){
+        decl
+        enddecl
+        begin
+            return "432";
+        end
+    }
+    int createPerson(str name, int age){
+        decl
+        enddecl
+        begin
+            return 69;
+        end
+    }
+}   
+Friend{
+    decl
+        str name;
+        str printName();
+    enddecl
+    str printName(){
+        decl
+            str currname;
+        enddecl
+        begin
+            read(currname);
+            write("Name is ");
+            return currname;
+        end
+    }
+}
+endclass    
+decl
+    List l1,l2,l3;
+    List printList(List list1);
+    int n1 ,n2 ,n3;
+    Person p1,p2,p3;
+    Friend f1;
+enddecl
+
+int main()
+{
+  decl
+  int x;
+  str classname;
+  enddecl
+
+  begin
+
+    x = initialize();
+    breakpoint;
+    x = p1.createPerson("name",65);
+    write(x);
+    classname = f1.printName();
+    write(classname);
+    return 1;
+
+  end
+}

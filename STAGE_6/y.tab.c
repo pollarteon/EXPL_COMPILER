@@ -751,7 +751,7 @@ static const yytype_int16 yyrline[] =
      476,   478,   481,   482,   483,   484,   485,   486,   487,   488,
      489,   490,   491,   492,   493,   494,   512,   531,   532,   533,
      534,   535,   538,   541,   545,   558,   570,   582,   604,   626,
-     664,   672,   684,   694
+     660,   668,   680,   690
 };
 #endif
 
@@ -2548,10 +2548,6 @@ yyreduce:
   else if(scope_of_var==2){//Lsymbol variable
     curr_type = temp->Lentry->type;
   }
-  else{
-    printf("ERROR: variable not declared !! :%s\n",temp->varname);
-    return -1;
-  }
   while(temp!=NULL){
     
     if(temp->left!=NULL){
@@ -2570,11 +2566,11 @@ yyreduce:
   // printf("%s\n",field_node->type->name);
   (yyval.no) = field_node;
 }
-#line 2574 "y.tab.c"
+#line 2570 "y.tab.c"
     break;
 
   case 110: /* Field: Field '.' ID  */
-#line 664 "expl.y"
+#line 660 "expl.y"
                      {
   struct tnode* temp = (yyvsp[-2].no);
   while(temp->left!=NULL){
@@ -2583,15 +2579,15 @@ yyreduce:
   temp->left=(yyvsp[0].no);
   (yyval.no)=(yyvsp[-2].no);
 }
-#line 2587 "y.tab.c"
+#line 2583 "y.tab.c"
     break;
 
   case 111: /* Field: ID '[' index ']' '.' ID  */
-#line 672 "expl.y"
+#line 668 "expl.y"
                            {
   // printf("Array field\n");
   (yyvsp[-5].no)->left =(yyvsp[0].no);
-  (yyvsp[-5].no)->right = (yyvsp[-3].no);
+  (yyvsp[-5].no)->right = (yyvsp[-3].no); //stores the size of the 1-D array
   if((yyvsp[-3].no)->nodetype==CONST_NODE){
     if((yyvsp[-3].no)->val>=(yyvsp[-5].no)->Gentry->row){
       printf("ERROR:Array Out of bounds:%s\n ",(yyvsp[-5].no)->Gentry->name);
@@ -2600,24 +2596,24 @@ yyreduce:
   }
   (yyval.no) =  (yyvsp[-5].no);
 }
-#line 2604 "y.tab.c"
+#line 2600 "y.tab.c"
     break;
 
   case 112: /* Field: ID '.' ID  */
-#line 684 "expl.y"
+#line 680 "expl.y"
             {
-  if((yyvsp[-2].no)->Gentry->row>1){
+  if((yyvsp[-2].no)->Gentry!=NULL && (yyvsp[-2].no)->Gentry->row>1){
     printf("ERROR: accessing an Array value without indexing %s\n",(yyvsp[-2].no)->Gentry->name);
     return -1;
   }
   (yyvsp[-2].no)->left = (yyvsp[0].no);
   (yyval.no)=(yyvsp[-2].no);
 }
-#line 2617 "y.tab.c"
+#line 2613 "y.tab.c"
     break;
 
   case 113: /* index: expr  */
-#line 694 "expl.y"
+#line 690 "expl.y"
              {
     if(strcmp((yyvsp[0].no)->type->name,"int")!=0){
       printf("ERROR:indexing by a non-int type \n");
@@ -2625,11 +2621,11 @@ yyreduce:
     }
     (yyval.no)=(yyvsp[0].no);
   }
-#line 2629 "y.tab.c"
+#line 2625 "y.tab.c"
     break;
 
 
-#line 2633 "y.tab.c"
+#line 2629 "y.tab.c"
 
       default: break;
     }
@@ -2822,7 +2818,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 703 "expl.y"
+#line 699 "expl.y"
 
 
 void yyerror(char const *s)

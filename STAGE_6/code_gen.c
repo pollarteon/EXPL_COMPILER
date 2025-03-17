@@ -348,13 +348,14 @@ int array_code_gen(struct tnode *t, FILE *target_file)
 
 void read_code_gen(struct tnode *t, FILE *target_file)
 {
-    int reg_result = getReg();
+    int reg_result ;
     int reg_num = getReg();
     int storage_location;
     struct tnode *identifier_node = t->left;
     // printf("%d\n",identifier_node->nodetype);
     if (identifier_node->nodetype == ARRAY_NODE)
     {
+        reg_result=getReg();
         struct Gsymbol *Gentry = identifier_node->left->Gentry;
         int storage_location = Gentry->binding;
         if (identifier_node->right->nodetype == _2D_ARRAY_NODE)
@@ -381,6 +382,7 @@ void read_code_gen(struct tnode *t, FILE *target_file)
     }
     else if(identifier_node->nodetype==IDENTIFIER_NODE)
     {
+        reg_result=getReg();
         struct Gsymbol *Gentry = identifier_node->Gentry;
         struct Lsymbol *Lentry = identifier_node->Lentry;
         if (Lentry != NULL)
@@ -414,9 +416,11 @@ void read_code_gen(struct tnode *t, FILE *target_file)
             exit(1);
         }
         reg_result = field_code_gen(identifier_node,target_file,0);//reg_result now contains the heap address of the field
+        
     }
     // printf("%d\n",storageLocation);
     // calling read through library
+ 
     fprintf(target_file, "MOV R%d, \"Read\"\n", reg_num);
     fprintf(target_file, "PUSH R%d\n", reg_num); // function code
     fprintf(target_file, "MOV R%d, -2\n", reg_num);
@@ -432,6 +436,7 @@ void read_code_gen(struct tnode *t, FILE *target_file)
     fprintf(target_file, "POP R1\n");
     fprintf(target_file, "POP R1\n");
 
+    
     freeReg();
     freeReg();
     return;

@@ -230,6 +230,19 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
             exit(1);
         }
     }
+    // else if(temp->nodetype==READ_NODE){
+    //     int symbol_table;
+    //     if(l->nodetype!=FIELD_NODE)
+    //         symbol_table=check_identifier(l);
+    //     else    
+    //         symbol_table=check_identifier(l->left);
+    //     if(symbol_table==1){
+    //         if(strcmp(l->Gentry->type->name,"int") && strcmp(l->Gentry->type->name,"str")){
+    //             printf("ERROR: Reading to a user-defined type %s\n",l->Gentry->type->name);
+    //             exit(1);
+    //         }
+    //     }
+    // }
     else if(temp->nodetype == INITIALIZE_NODE){
 
         //checking if the identifer is int (the identifer is used to store return val of initialize()function)
