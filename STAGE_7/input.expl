@@ -1,83 +1,56 @@
-type
-  List
-  {
-    int data;
-    int data2;
-    List next;
-  }
-endtype
-class 
-Person{
-    decl
-        str name;
-        int age;
-        int printDetails();
-        str findName();
-        int createPerson(str name, int age);
-    enddecl
-    int printDetails(){
-        decl 
-        enddecl
-        begin
-            return 1;
-        end
-    }
-    str findName(){
-        decl
-        enddecl
-        begin
-            return "432";
-        end
-    }
-    int createPerson(str name, int age){
-        decl
-        enddecl
-        begin
-            return 69;
-        end
-    }
-}   
-Friend{
-    decl
-        str name;
-        str printName();
-    enddecl
-    str printName(){
-        decl
-            str currname;
-        enddecl
-        begin
-            read(currname);
-            write("Name is ");
-            return currname;
-        end
-    }
-}
-endclass    
+class
+fact{
 decl
-    List l1,l2,l3;
-    List printList(List list1);
-    int n1 ,n2 ,n3;
-    Person p1,p2,p3;
-    Friend f1;
+int x;
+int findfactorial(int n);
 enddecl
+int findfactorial(int n){
+decl
+int p;
+enddecl
+begin
+if(n<=1)then
+p=self.x;
+else
+p=n*self.findfactorial(self.x);
+endif;
+return p;
+end
+}
+}
+testfactsum{
+decl
+fact o1;
+int testfun(int n);
+enddecl
+int testfun(int n){
+decl
+int sum;
+enddecl
+begin
+self.o1=new(fact);
+sum=0;
+while(n!=0)do
 
-int main()
-{
-  decl
-  int x;
-  str classname;
-  enddecl
-
-  begin
-
-    x = initialize();
-    breakpoint;
-    x = p1.createPerson("name",65);
-    write(x);
-    classname = f1.printName();
-    write(classname);
-    return 1;
-
-  end
+n=n-1;
+endwhile;
+return sum;
+end
+}
+}
+endclass
+decl
+testfactsum obj;
+enddecl
+int main(){
+decl
+int x,n;
+enddecl
+begin
+x=initialize();
+obj=new(testfactsum);
+read(n);
+write(obj.testfun(n));
+return 1;
+end
 }

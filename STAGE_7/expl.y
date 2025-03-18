@@ -135,10 +135,11 @@ Classdef : Cname '{' DECL CFieldlists MethodDecl ENDDECL MethodDefns '}' {
       printf("ERROR:class and userdefined type must not have the same name: %s\n",$1);
       return -1;
     }
-    class->memberField = $4;
+    class->memberField = cptr->memberField;
     struct Fieldlist* field_traverser = class->memberField;
     int field_index =0;
     while(field_traverser!=NULL){
+     
       if(field_index>7){
         printf("ERROR: not more than 8 member Fields allowed for a Class %s\n",$1);
         return -1;
@@ -150,6 +151,7 @@ Classdef : Cname '{' DECL CFieldlists MethodDecl ENDDECL MethodDefns '}' {
     PrintFieldlist(class->memberField);
     // Print_VirtFuncTable(cptr);
     cptr=NULL;
+    
   }
   ;
 
@@ -158,15 +160,18 @@ Cname : ID {
     $$=$1->varname;
   };
 
-CFieldlists : CFieldlists Cfield {$$ =Finstall($1,$2);}
-| Cfield {$$ =$1;}
+
+
+CFieldlists : CFieldlists Cfield {Class_Finstall(cptr,$2);}
+| Cfield {Class_Finstall(cptr,$1);}
 
 Cfield : TypeName ID ';' {
   struct Typetable* type = TLookup($1);
-  if(type==NULL){
-    printf("ERROR: Type is undefined %s\n",$1);
+  struct Classtable* class = Clookup($1);
+  if(type==NULL && class==NULL){
+    printf("ERROR: Type/Class is undefined %s\n",$1);
   }
-  $$ = Fcreate($2->varname,0,type,cptr);
+  $$ = Fcreate($2->varname,0,type,class);
 }
 
 MethodDecl : Mdecl MethodDecl {L_cleanup();local_binding=1;param_binding=1;}
@@ -179,7 +184,10 @@ Mdecl : TypeName ID '(' ParamList ')' ';'{
 | TypeName ID '(' ')' ';' {
   Class_Minstall(cptr,$2->varname,TLookup($1),NULL);
 }
-MethodDefns : FdefBlock {};
+MethodDefns : FdefBlock {
+    Print_Classtable();
+    PrintFieldlist(cptr->memberField);
+  };
 | {}
 ;
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -649,7 +657,6 @@ expr : expr PLUS expr  {$$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"+");}
   | Identifier {$$=$1;}
   | PNULL {$$=$1;}
   | FieldFunction {
-    printf("method invocation!\n");
     $$ = $1;
   }
   ;
@@ -664,6 +671,7 @@ ArgList : ArgList ',' expr {
 
 Identifier : ID {
     struct tnode* IDNode = $1;
+  
     int table_type = check_identifier(IDNode);
     // printf("%d\n",table_type);
     if (table_type==1) { //GLOBAL variable
@@ -723,6 +731,7 @@ Identifier : ID {
 }
 | '&' Identifier {
     struct tnode* IDNode = $2;
+   
     int table_type = check_identifier(IDNode);
     if (table_type == 1) {//GLOBAL variable
         struct tnode* addressNode = makeNonLeafNode(IDNode, NULL, ADDRESS_NODE, "_");
@@ -744,45 +753,9 @@ Identifier : ID {
     }
 }
 | Field {
-  struct tnode* field_node =makeNonLeafNode($1,NULL,FIELD_NODE,"_");
-  //field validation
-  struct tnode* temp = field_node->left;
-  struct tnode* identifier_node = field_node->left;
-  if(identifier_node->Ctype!=NULL){//the identifier is a class
-  //the class should invoke a function instead of member fields 
-  //the member fields are private;
-    printf("ERROR: method/fields are private for a class %s\n",identifier_node->varname);
-    exit(1);
-    
-  }
-  else{
-     struct Typetable* curr_type ;
-  char* field_name;
-  int scope_of_var = check_identifier(temp);
-  if(scope_of_var==1){//identifer exists in Gsymbol table;
-    curr_type = temp->Gentry->type;
-  }
-  else if(scope_of_var==2){//Lsymbol variable
-    curr_type = temp->Lentry->type;
-  }
-  while(temp!=NULL){
-    
-    if(temp->left!=NULL){
-      field_name = temp->left->varname;
-    }else break;
-    struct Fieldlist* curr_field = FLookup(curr_type,field_name);
-    if(curr_field==NULL){
-      printf("ERROR: Field doesn't exist for type : %s %s\n",curr_type->name,field_name);
-      return -1;
-    }else{
-      curr_type = curr_field->type;
-    }
-    temp=temp->left;
-  }
-  field_node->type=curr_type;
-  // printf("%s\n",field_node->type->name);
-  }
-   $$ = field_node;
+  struct tnode* field_node = makeNonLeafNode($1, NULL, FIELD_NODE, "_");
+  field_validifier(field_node);  
+  $$ = field_node;
 }
 ;
 
@@ -799,6 +772,7 @@ Field : Field '.' ID {
   // printf("Array field\n");
   $1->left =$6;
   $1->right = $3; //stores the size of the 1-D array
+ 
   check_identifier($1);
   if($3->nodetype==CONST_NODE){
     if($3->val>=$1->Gentry->row){
@@ -809,6 +783,7 @@ Field : Field '.' ID {
   $$ =  $1;
 }
 | ID '.' ID {
+  // printf("re");
   check_identifier($1);
   if($1->Gentry!=NULL && $1->Gentry->row>1){
     printf("ERROR: accessing an Array value without indexing %s\n",$1->Gentry->name);
@@ -822,12 +797,16 @@ Field : Field '.' ID {
     printf("ERROR: \"self\" keyword is used under class definition\n");
     return -1;
   }
-  $$ = makeNonLeafNode($3,NULL,SELF_NODE,"_");
+
+  struct tnode* self_node= makeNonLeafNode($3,NULL,SELF_NODE,"_");
+  self_node->Ctype = cptr;
+  $$=self_node;
 }
 ;
 
 FieldFunction : ID '.' ID '(' ArgList ')'{
   struct tnode* function_node = makeNonLeafNode($3,$1,FUNCTION_NODE,"_");
+
   check_identifier($1);
   struct Memberfunclist* member_function = Class_Mlookup($1->Ctype,$3->varname);
   if(member_function==NULL){
@@ -844,21 +823,36 @@ FieldFunction : ID '.' ID '(' ArgList ')'{
     printf("ERROR: \"self\" keyword is used under class definition\n");
     return -1;
   }
-  struct tnode* function_node = makeNonLeafNode($3,NULL,FUNCTION_NODE,"_");
+  struct tnode* class_node = makeNonLeafNode(NULL,NULL,SELF_NODE,"_");
+  class_node->Ctype = cptr;
+  struct tnode* function_node = makeNonLeafNode($3,class_node,FUNCTION_NODE,"_");
   struct Memberfunclist* member_function = Class_Mlookup(cptr,$3->varname);
   if(member_function==NULL){
     printf("ERROR: no such method exists for class %s\n",cptr->name);
     return -1;
   }
   function_node->argList =$5;
-  function_node->Ctype = cptr;
+  function_node->Ctype = NULL;
   function_node->type = member_function->type;
   function_node->varname = strdup($3->varname);
   $$=function_node;
 }
-// | Field '.' ID '(' ArgList ')'{
-
-// }
+| Field '.' ID '(' ArgList ')'{
+  struct tnode* field_node = makeNonLeafNode($1, NULL, FIELD_NODE, "_");
+  field_validifier(field_node);  
+  struct tnode* function_node = makeNonLeafNode($3,field_node,FUNCTION_NODE,"_");
+ 
+  struct Memberfunclist* member_function = Class_Mlookup(field_node->Ctype,$3->varname);
+  // Print_VirtFuncTable($1->Ctype);
+  if(member_function==NULL){
+    printf("ERROR: no such method exists for class %s\n",field_node->Ctype->name);
+    return -1;
+  }
+  function_node->argList =$5;
+  function_node->type = member_function->type; 
+  function_node->varname = strdup($3->varname);
+  $$=function_node;
+}
 index : expr {
     if(strcmp($1->type->name,"int")!=0){
       printf("ERROR:indexing by a non-int type \n");

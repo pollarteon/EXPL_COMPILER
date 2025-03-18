@@ -94,6 +94,8 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
         int is_pointer =0;
         temp->op = op;
         if((l->Ctype!=NULL) || r->Ctype!=NULL){
+            printf("%s\n", temp->op);
+            // printf("%s %s\n", l->type->name, r->type->name);
             printf("ERROR: classes not used in expression evaluation/ assignments\n");
             exit(1);
         }
@@ -243,6 +245,7 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
 
         //checking if the identifer is int (the identifer is used to store return val of initialize()function)
         struct tnode* identifier_node = l;
+
         int symbol_table = check_identifier(identifier_node);
         if(symbol_table==1){// identifier is in Global symbol table
             if(strcmp(l->Gentry->type->name,"int")!=0){
@@ -290,6 +293,7 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
         }
         else if (r->nodetype == IDENTIFIER_NODE)
         {
+           
             int symbol_table = check_identifier(r);
             if(symbol_table==2)//local variable
             temp->type = r->Lentry->type;
@@ -322,6 +326,7 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
             }
             else
             {
+                
                 int symbol_table = check_identifier(_2D_node->left);
                 if(symbol_table==2)
                 temp->type = _2D_node->left->Lentry->type;
@@ -456,7 +461,7 @@ void PrintFieldlist(struct Fieldlist* fieldlist){
     struct Fieldlist* temp = fieldlist;
     printf("\n--------------------Field---------------------\n");
     while(temp!=NULL){
-        printf("|---%s(%d)%s---|",temp->name,temp->fieldIndex,temp->type->name);
+        printf("|---%s(%d)%s---|",temp->name,temp->fieldIndex,temp->type?temp->type->name:temp->ctype->name);
         temp=temp->next;
     }
     printf("\n\n");
@@ -533,6 +538,19 @@ void Class_Minstall(struct Classtable* cptr,char* name,struct Typetable* type,st
 
 }
 
+void Class_Finstall(struct Classtable* cptr,struct Fieldlist* field){
+    struct Fieldlist* temp = cptr->memberField;
+    if(temp==NULL){
+        cptr->memberField = field;
+        return;
+    }
+    while(temp->next!=NULL){
+        temp=temp->next;
+    }
+    temp->next = field;
+    return;
+}
+
 Classtable* Clookup(char* name){
     Classtable* temp = class_table;
     if(temp==NULL)return NULL;
@@ -544,6 +562,7 @@ Classtable* Clookup(char* name){
 }
 
 struct Memberfunclist* Class_Mlookup(Classtable* Ctype,char* name){
+    if(Ctype==NULL)return NULL;
     struct Memberfunclist* temp = Ctype->Vfuncptr;
     if(temp==NULL)return NULL;
     while(temp!=NULL){
@@ -659,8 +678,98 @@ void print_GSymbolTable()
 //============================================================================
 //IDENTIFIER CHECKING AND SETTING UP / ADDITIONAL SEMANTIC CHECKING FUNCTIONS
 
+int field_validifier(struct tnode* field_node){
+    
+  struct tnode* temp = field_node->left;
+    struct tnode* identifier_node = field_node->left;
+  struct Typetable* curr_type = NULL;
+  struct Classtable* curr_ctype = NULL;
+  struct Fieldlist* curr_field;
+  int self_access = 0;
+  int isClassType = 0;  // To check if intermediate fields are class types
+  int identifier_checked = 0;
+
+  if (temp->nodetype == SELF_NODE) {
+    self_access = 1;
+  }
+
+  curr_type = temp->type;
+  curr_ctype = temp->Ctype;
+
+  if (curr_ctype) isClassType = 1;
+
+  while (temp != NULL) {
+    char* field_name = temp->left ? temp->left->varname : NULL;
+
+    if (curr_ctype && temp->left != NULL && self_access == 0) {
+      printf("ERROR: Fields/methods of class %s are private\n", identifier_node->varname);
+      exit(1);
+    } 
+    else if (curr_ctype && temp->left == NULL) {
+      field_node->type = curr_type;
+      field_node->Ctype = curr_ctype;
+      break;
+    }
+    else if (self_access) {//if self keyword has been used
+      curr_field = Class_Flookup(curr_ctype, field_name);
+      if (curr_field == NULL) {
+        printf("ERROR: Field (%s) doesn't exist for class (%s)\n", field_name, curr_ctype->name);
+        exit(1);
+      } else {
+        curr_type = curr_field->type;
+        curr_ctype = curr_field->ctype;
+        // if(curr_ctype)printf("class :%s\n",curr_ctype->name);
+        self_access = 0;
+        identifier_checked=1;
+      }
+      
+    } 
+    else if (!self_access && !identifier_checked) {
+
+      int scope_of_var = check_identifier(temp);
+      if (scope_of_var == 1) {  // Global variable
+        curr_type = temp->Gentry->type;
+        curr_ctype = temp->Gentry->Ctype;
+      } else if (scope_of_var == 2) {  // Local variable
+        curr_type = temp->Lentry->type;
+        curr_ctype = NULL;
+      }
+      identifier_checked = 1;
+      continue;
+    } 
+    else if (identifier_checked) {
+      if (temp->left != NULL) {
+        field_name = temp->left->varname;
+      } else {
+        break;
+      }
+      if(curr_type)printf("type :%s\n",curr_type->name);
+      curr_field = FLookup(curr_type, field_name);
+      if (curr_field == NULL) {
+        printf("ERROR: Field '%s' doesn't exist for type %s\n", field_name, curr_type->name);
+        return -1;
+      } else {
+        curr_type = curr_field->type;
+        curr_ctype = curr_field->ctype;
+        // if(field_node->type) printf("type: %s\n",field_node->type->name);
+        // if(field_node->Ctype) printf("class_type: %s\n",field_node->Ctype->name);
+        if (curr_ctype) isClassType = 1;
+        else isClassType = 0;
+      }
+    }
+
+    temp = temp->left;
+  }
+  field_node->type = curr_type;
+  field_node->Ctype=curr_ctype;
+  if(field_node->type) printf("type: %s\n",field_node->type->name);
+  if(field_node->Ctype) printf("class_type: %s\n",field_node->Ctype->name);
+  return 1;
+}
+
 int check_identifier(struct tnode* IDnode){
     // printf("%s\n",IDnode->Gentry);
+    
     struct Gsymbol* Gentry = IDnode->Gentry;
     struct Lsymbol* Lentry = IDnode->Lentry;
     if(IDnode->nodetype==ARRAY_NODE){
@@ -942,6 +1051,9 @@ void preorder(struct tnode *root)
     }
     else if(root->nodetype==NEW_NODE){
         printf("new ");
+    }
+    else if(root->nodetype==SELF_NODE){
+        printf("self ");
     }
     else if (root->nodetype == CONST_NODE)
     {

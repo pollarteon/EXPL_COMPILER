@@ -156,6 +156,8 @@ struct Classtable* Clookup(char* name);
 
 void Class_Minstall(struct Classtable* cptr,char* name,struct Typetable* type,struct ParamList* Paramlist);
 
+void Class_Finstall(struct Classtable* cptr,struct Fieldlist* field);
+
 struct Memberfunclist* Class_Mlookup(struct Classtable* Ctype,char* name);
 
 struct Fieldlist* Class_Flookup(struct Classtable* CType,char* name);
@@ -228,6 +230,7 @@ void PrintTypeTable();
 void PrintFieldlist(struct Fieldlist* fieldlist);
 
 //----------------------------------------------------------------
+int field_validifier(struct tnode* field_node);
 
 int check_identifier(struct tnode* t);
 

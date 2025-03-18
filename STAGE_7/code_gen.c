@@ -199,8 +199,14 @@ void alloc_code_gen(struct tnode *t, FILE *target_file)
     fprintf(target_file, "POP R%d\n",reg_num);
 
     if(identifier_node->nodetype==FIELD_NODE){
+
         address_reg = field_code_gen(identifier_node,target_file,0); //stores the heap address
-        symbol_table = check_identifier(identifier_node->left);
+        if(identifier_node->left->nodetype!=SELF_NODE)
+            symbol_table = check_identifier(identifier_node->left);
+        else{
+            printf("\n\nSelf code_gen pending\n");
+           return;
+        }
         fprintf(target_file,"MOV [R%d], R%d\n",address_reg,alloc_reg);
         freeReg();//address_reg
         freeReg();//reg_num
@@ -251,10 +257,16 @@ void alloc_code_gen(struct tnode *t, FILE *target_file)
 int field_code_gen(struct tnode* t, FILE* target_file,int expr) {
     struct tnode* identifier_node = t->left;
     struct Typetable* type_of_identifier;
-    int symbol_table = check_identifier(identifier_node);
-    
-    // load identifier's address into a register
+    int symbol_table;
     int id_reg = getReg();
+    if(identifier_node->nodetype!=SELF_NODE)
+    symbol_table = check_identifier(identifier_node);
+    else{
+        printf("Self code_gen will be done later\n");
+        return -1;
+    }
+    // load identifier's address into a register
+    
     if (symbol_table == 1) { // Global variable
         type_of_identifier = identifier_node->Gentry->type;
         if(identifier_node->right==NULL)//id not an array
@@ -633,7 +645,11 @@ int function_code_gen(struct tnode *t, FILE *target_file)
     // print_arglist(temp);
     if(isMethod){//push address for accessing self
         int self_reg = getReg();
+        if(t->right->nodetype!=SELF_NODE && t->right->nodetype!=FIELD_NODE)
         fprintf(target_file,"MOV R%d, [%d]\n",self_reg,t->right->Gentry->binding);
+        else{
+            //.......
+        }
         fprintf(target_file,"PUSH R%d\n",self_reg);
         freeReg();
     }
