@@ -151,7 +151,7 @@ Classdef : Cname '{' DECL CFieldlists MethodDecl ENDDECL MethodDefns '}' {
     PrintFieldlist(class->memberField);
     // Print_VirtFuncTable(cptr);
     cptr=NULL;
-    
+    class_field_index =0;
   }
   ;
 
@@ -171,7 +171,7 @@ Cfield : TypeName ID ';' {
   if(type==NULL && class==NULL){
     printf("ERROR: Type/Class is undefined %s\n",$1);
   }
-  $$ = Fcreate($2->varname,0,type,class);
+  $$ = Fcreate($2->varname,class_field_index++,type,class);
 }
 
 MethodDecl : Mdecl MethodDecl {L_cleanup();local_binding=1;param_binding=1;}
@@ -279,12 +279,14 @@ Fdef : Type ID '(' ParamList ')' '{' LdeclBlock Body '}' {
   struct Gsymbol* Gentry = $2->Gentry;
   struct Memberfunclist* member_function ;
   int is_member_function =0;
+  self_binded=0;
   if(cptr){
      member_function = Class_Mlookup(cptr,$2->varname);
      if(member_function==NULL){
       printf("ERROR: member function (%s) not declared in class %s\n",$2->varname,cptr->name);
       return -1;
      }
+     L_Install("self",TLookup("null"),1);
      is_member_function =1;
   }
   if(!is_member_function && Gentry==NULL){
@@ -350,12 +352,14 @@ Fdef : Type ID '(' ParamList ')' '{' LdeclBlock Body '}' {
   struct Gsymbol* Gentry = GLookUp($2->varname);
   struct Memberfunclist* member_function;
   int is_member_function =0;
+  self_binded =0;
   if(cptr){
      member_function = Class_Mlookup(cptr,$2->varname);
      if(member_function==NULL){
       printf("ERROR: member function (%s) not declared in class %s\n",$2->varname,cptr->name);
       return -1;
      }
+     L_Install("self",TLookup("null"),1);
      is_member_function =1;
   }
   if(!is_member_function && Gentry==NULL){
@@ -823,9 +827,11 @@ FieldFunction : ID '.' ID '(' ArgList ')'{
     printf("ERROR: \"self\" keyword is used under class definition\n");
     return -1;
   }
-  struct tnode* class_node = makeNonLeafNode(NULL,NULL,SELF_NODE,"_");
-  class_node->Ctype = cptr;
-  struct tnode* function_node = makeNonLeafNode($3,class_node,FUNCTION_NODE,"_");
+  struct tnode* self_node = makeNonLeafNode(NULL,NULL,SELF_NODE,"_");
+  struct tnode* field_node = makeNonLeafNode(self_node,NULL,FIELD_NODE,"_");
+  self_node->Ctype = cptr;
+  field_node->Ctype= cptr;
+  struct tnode* function_node = makeNonLeafNode($3,field_node,FUNCTION_NODE,"_");
   struct Memberfunclist* member_function = Class_Mlookup(cptr,$3->varname);
   if(member_function==NULL){
     printf("ERROR: no such method exists for class %s\n",cptr->name);

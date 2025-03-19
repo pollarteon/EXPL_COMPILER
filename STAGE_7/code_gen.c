@@ -205,6 +205,7 @@ void alloc_code_gen(struct tnode *t, FILE *target_file)
             symbol_table = check_identifier(identifier_node->left);
         else{
             printf("\n\nSelf code_gen pending\n");
+            
            return;
         }
         fprintf(target_file,"MOV [R%d], R%d\n",address_reg,alloc_reg);
@@ -256,19 +257,27 @@ void alloc_code_gen(struct tnode *t, FILE *target_file)
 
 int field_code_gen(struct tnode* t, FILE* target_file,int expr) {
     struct tnode* identifier_node = t->left;
-    struct Typetable* type_of_identifier;
-    int symbol_table;
+    struct Typetable* type_of_identifier=NULL;
+    struct Classtable* class_type=NULL;
+    int symbol_table =0;
     int id_reg = getReg();
     if(identifier_node->nodetype!=SELF_NODE)
-    symbol_table = check_identifier(identifier_node);
-    else{
-        printf("Self code_gen will be done later\n");
-        return -1;
+        symbol_table = check_identifier(identifier_node);
+    else{ // load class address (self) address into a register
+        class_type = identifier_node->Ctype;
+        fprintf(target_file,"MOV R%d, BP\n",id_reg);
+        fprintf(target_file,"SUB R%d, %d\n",id_reg,2+LLookUp("self")->binding);
+        fprintf(target_file,"MOV R%d, [R%d]\n",id_reg,id_reg);
+        //now id_reg contains the self class address
+        // identifier_node=identifier_node->left;
+        type_of_identifier = identifier_node->type;
+        class_type = identifier_node->Ctype;
     }
     // load identifier's address into a register
     
     if (symbol_table == 1) { // Global variable
         type_of_identifier = identifier_node->Gentry->type;
+        class_type = identifier_node->Gentry->Ctype;
         if(identifier_node->right==NULL)//id not an array
             fprintf(target_file, "MOV R%d, [%d]\n", id_reg, identifier_node->Gentry->binding);
         else{//id is an array (the right child contains the index);
@@ -277,9 +286,10 @@ int field_code_gen(struct tnode* t, FILE* target_file,int expr) {
             fprintf(target_file,"MOV R%d, [R%d]\n",id_reg,index_reg);
             freeReg();//freeing index_reg
         }
-    } else { 
+    } else if(symbol_table==2) {//local variable 
         int address_reg = getReg();
         type_of_identifier = identifier_node->Lentry->type;
+        class_type=NULL;
         if (identifier_node->Lentry->isArg)
             { // for accessing arguement from the stack
                 fprintf(target_file, "MOV R%d, BP\n", address_reg);
@@ -292,27 +302,40 @@ int field_code_gen(struct tnode* t, FILE* target_file,int expr) {
         fprintf(target_file, "MOV R%d, [R%d]\n", id_reg, address_reg); // Dereference to get heap address
        
         }
-        freeReg();
+        freeReg();//freeing address register....
     }
-
-    struct Fieldlist* fields_of_identifier = type_of_identifier->fields;
+    struct Fieldlist* fields_of_identifier;
+    if(type_of_identifier)
+        fields_of_identifier = type_of_identifier->fields;
+    if(class_type)
+        fields_of_identifier = class_type->memberField;
     struct tnode* curr_field_node = identifier_node->left;
     int fieldIndex;
 
     if (fields_of_identifier == NULL) {
         return id_reg;
     }
+    // PrintFieldlist(fields_of_identifier);
 
     // Step 2: Traverse the field chain
     while (curr_field_node != NULL) {
-        struct Fieldlist* field = FLookup(type_of_identifier, curr_field_node->varname);
+        struct Fieldlist* field;
+        if(type_of_identifier){
+            field = FLookup(type_of_identifier, curr_field_node->varname);
+            printf("%s\n",type_of_identifier->name);
+        }
+            
+        if(class_type){
+            field = Class_Flookup(class_type,curr_field_node->varname);
+            printf("%s\n",class_type->name);
+        }
         if (field == NULL) {
-            printf("Error: Field %s not found in type %s\n", curr_field_node->varname, type_of_identifier->name);
+            printf("Error: Field %s not found in type/class %s\n", curr_field_node->varname, type_of_identifier->name);
             exit(1);
         }
 
         fieldIndex = field->fieldIndex;
-   
+        printf("%d\n",fieldIndex);
         // Add field offset to move to the correct address
         fprintf(target_file, "ADD R%d, %d\n", id_reg, fieldIndex);
         if (curr_field_node->left != NULL) { 
@@ -321,6 +344,7 @@ int field_code_gen(struct tnode* t, FILE* target_file,int expr) {
         }
 
         type_of_identifier = field->type;
+        class_type = field->ctype;
         curr_field_node = curr_field_node->left;
     }
     if(expr) // should return a register with the value at that heap address
@@ -648,10 +672,19 @@ int function_code_gen(struct tnode *t, FILE *target_file)
         if(t->right->nodetype!=SELF_NODE && t->right->nodetype!=FIELD_NODE)
         fprintf(target_file,"MOV R%d, [%d]\n",self_reg,t->right->Gentry->binding);
         else{
-            //.......
+            if(t->right->nodetype==FIELD_NODE){
+                struct tnode* field_identifier = t->right->left;
+                if(field_identifier->nodetype==SELF_NODE){
+                    //if self.method()
+                    //access self from the run-time stack
+                    fprintf(target_file, "MOV R%d, BP\n",self_reg );
+                    fprintf(target_file, "SUB R%d, %d\n", self_reg, 2 + LLookUp("self")->binding);
+                    fprintf(target_file, "MOV R%d, [R%d]\n", self_reg, self_reg);
+                }
+            }
         }
         fprintf(target_file,"PUSH R%d\n",self_reg);
-        freeReg();
+        freeReg();//freeing self_reg
     }
     while (temp != NULL)
     {

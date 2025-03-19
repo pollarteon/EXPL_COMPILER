@@ -30,7 +30,6 @@
 %type <no>  FdefBlock MainBlock Gdecl GidList Gid
 %type <no> Fdef  LdeclBlock Body LdecList Ldecl IdList Lid Field
 %type <no>  initializeStmt AllocStmt FreeStmt
-%type <no> ClassDefBlock ClassDefList Classdef Cname CFieldlists CFieldlists MethodDecl Mdecl MethodDefns Cfield
 
 %type <string> Type TypeName
 %type <plist> ParamList Param
@@ -116,31 +115,7 @@ TypeName : INT {$$="int";}
   | STR {$$="str";}
   | ID {$$=$1->varname;};
   ;
-//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
-/// CLASS DECLARATIONS SYNTAX
-//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-ClassDefBlock : CLASS ClassDefList ENDCLASS {}
-| {}
-;
-
-ClassDefList : ClassDefList Classdef {}
-| Classdef {}
-;
-
-Classdef : Cname '{' DECL CFieldlists MethodDecl ENDDECL MethodDefns '}' {};
-
-Cname : ID {};
-
-CFieldlists : CFieldlists Cfield {}
-| {}
-
-Cfield : ID ID ';' {}
-
-MethodDecl : MethodDecl Mdecl {}
-| Mdecl {}
-
-Mdecl : ID ID '(' ParamList ')' ';'
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 /// GLOBAL DECLARATIONS SYNTAX
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------

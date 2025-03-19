@@ -91,11 +91,17 @@ extern int yydebug;
     ALLOC = 292,                   /* ALLOC  */
     INITIALIZE = 293,              /* INITIALIZE  */
     FREE = 294,                    /* FREE  */
-    NUM = 295,                     /* NUM  */
-    STRING = 296,                  /* STRING  */
-    END = 297,                     /* END  */
-    ID = 298,                      /* ID  */
-    PNULL = 299                    /* PNULL  */
+    CLASS = 295,                   /* CLASS  */
+    ENDCLASS = 296,                /* ENDCLASS  */
+    SELF = 297,                    /* SELF  */
+    EXTENDS = 298,                 /* EXTENDS  */
+    NEW = 299,                     /* NEW  */
+    DELETE = 300,                  /* DELETE  */
+    NUM = 301,                     /* NUM  */
+    STRING = 302,                  /* STRING  */
+    END = 303,                     /* END  */
+    ID = 304,                      /* ID  */
+    PNULL = 305                    /* PNULL  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -141,11 +147,17 @@ extern int yydebug;
 #define ALLOC 292
 #define INITIALIZE 293
 #define FREE 294
-#define NUM 295
-#define STRING 296
-#define END 297
-#define ID 298
-#define PNULL 299
+#define CLASS 295
+#define ENDCLASS 296
+#define SELF 297
+#define EXTENDS 298
+#define NEW 299
+#define DELETE 300
+#define NUM 301
+#define STRING 302
+#define END 303
+#define ID 304
+#define PNULL 305
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
@@ -160,7 +172,7 @@ union YYSTYPE
   int integer;
   char* string;
 
-#line 164 "y.tab.h"
+#line 176 "y.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

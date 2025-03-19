@@ -774,16 +774,16 @@ static const yytype_int16 yyrline[] =
       99,   100,   103,   115,   116,   117,   123,   124,   127,   128,
      131,   158,   165,   166,   168,   177,   178,   181,   184,   187,
      191,   197,   198,   200,   200,   202,   235,   243,   245,   249,
-     253,   257,   261,   265,   274,   274,   276,   348,   408,   411,
-     415,   420,   441,   468,   469,   470,   472,   472,   474,   510,
-     518,   520,   523,   529,   530,   532,   533,   534,   543,   546,
-     549,   550,   551,   552,   553,   554,   555,   556,   557,   558,
-     559,   560,   561,   562,   569,   574,   576,   581,   583,   585,
-     587,   592,   595,   597,   599,   601,   603,   605,   608,   622,
-     623,   624,   625,   626,   627,   628,   629,   630,   631,   632,
-     633,   634,   635,   654,   655,   656,   657,   658,   659,   664,
-     667,   670,   672,   686,   698,   710,   732,   755,   762,   771,
-     785,   795,   807,   821,   840,   856
+     253,   257,   261,   265,   274,   274,   276,   350,   412,   415,
+     419,   424,   445,   472,   473,   474,   476,   476,   478,   514,
+     522,   524,   527,   533,   534,   536,   537,   538,   547,   550,
+     553,   554,   555,   556,   557,   558,   559,   560,   561,   562,
+     563,   564,   565,   566,   573,   578,   580,   585,   587,   589,
+     591,   596,   599,   601,   603,   605,   607,   609,   612,   626,
+     627,   628,   629,   630,   631,   632,   633,   634,   635,   636,
+     637,   638,   639,   658,   659,   660,   661,   662,   663,   668,
+     671,   674,   676,   690,   702,   714,   736,   759,   766,   775,
+     789,   799,   811,   825,   846,   862
 };
 #endif
 
@@ -1757,7 +1757,7 @@ yyreduce:
     PrintFieldlist(class->memberField);
     // Print_VirtFuncTable(cptr);
     cptr=NULL;
-    
+    class_field_index =0;
   }
 #line 1763 "y.tab.c"
     break;
@@ -1791,7 +1791,7 @@ yyreduce:
   if(type==NULL && class==NULL){
     printf("ERROR: Type/Class is undefined %s\n",(yyvsp[-2].string));
   }
-  (yyval.fieldlist) = Fcreate((yyvsp[-1].no)->varname,0,type,class);
+  (yyval.fieldlist) = Fcreate((yyvsp[-1].no)->varname,class_field_index++,type,class);
 }
 #line 1797 "y.tab.c"
     break;
@@ -1976,12 +1976,14 @@ yyreduce:
   struct Gsymbol* Gentry = (yyvsp[-7].no)->Gentry;
   struct Memberfunclist* member_function ;
   int is_member_function =0;
+  self_binded=0;
   if(cptr){
      member_function = Class_Mlookup(cptr,(yyvsp[-7].no)->varname);
      if(member_function==NULL){
       printf("ERROR: member function (%s) not declared in class %s\n",(yyvsp[-7].no)->varname,cptr->name);
       return -1;
      }
+     L_Install("self",TLookup("null"),1);
      is_member_function =1;
   }
   if(!is_member_function && Gentry==NULL){
@@ -2042,22 +2044,24 @@ yyreduce:
     param_binding=1;
     fclose(target_file);
 }
-#line 2046 "y.tab.c"
+#line 2048 "y.tab.c"
     break;
 
   case 47: /* Fdef: Type ID '(' ')' '{' LdeclBlock Body '}'  */
-#line 348 "expl.y"
+#line 350 "expl.y"
                                          {
   char* definition_type = (yyvsp[-7].string);
   struct Gsymbol* Gentry = GLookUp((yyvsp[-6].no)->varname);
   struct Memberfunclist* member_function;
   int is_member_function =0;
+  self_binded =0;
   if(cptr){
      member_function = Class_Mlookup(cptr,(yyvsp[-6].no)->varname);
      if(member_function==NULL){
       printf("ERROR: member function (%s) not declared in class %s\n",(yyvsp[-6].no)->varname,cptr->name);
       return -1;
      }
+     L_Install("self",TLookup("null"),1);
      is_member_function =1;
   }
   if(!is_member_function && Gentry==NULL){
@@ -2106,37 +2110,37 @@ yyreduce:
 
 
 }
-#line 2110 "y.tab.c"
+#line 2114 "y.tab.c"
     break;
 
   case 48: /* ParamList: ParamList ',' Param  */
-#line 408 "expl.y"
+#line 412 "expl.y"
                                 {
   (yyval.plist) = append_param_list((yyvsp[-2].plist),(yyvsp[0].plist));
 }
-#line 2118 "y.tab.c"
+#line 2122 "y.tab.c"
     break;
 
   case 49: /* ParamList: Param  */
-#line 411 "expl.y"
+#line 415 "expl.y"
          {
   (yyval.plist) = (yyvsp[0].plist);
 }
-#line 2126 "y.tab.c"
+#line 2130 "y.tab.c"
     break;
 
   case 50: /* Param: Type ID  */
-#line 415 "expl.y"
+#line 419 "expl.y"
                 {
   Typetable* param_type = TLookup((yyvsp[-1].string));
   L_Install((yyvsp[0].no)->varname,param_type,1);
   (yyval.plist) = create_param_list(param_type,(yyvsp[0].no)->varname);
 }
-#line 2136 "y.tab.c"
+#line 2140 "y.tab.c"
     break;
 
   case 51: /* Param: Type MUL ID  */
-#line 420 "expl.y"
+#line 424 "expl.y"
              {
   char* declaration_type = (yyvsp[-2].string);
   Typetable* Lentry_type;
@@ -2153,11 +2157,11 @@ yyreduce:
   L_Install((yyvsp[0].no)->varname,Lentry_type,1);
   (yyval.plist) = create_param_list(Lentry_type,(yyvsp[0].no)->varname);
 }
-#line 2157 "y.tab.c"
+#line 2161 "y.tab.c"
     break;
 
   case 52: /* MainBlock: INT MAIN '(' ')' '{' LdeclBlock Body '}'  */
-#line 441 "expl.y"
+#line 445 "expl.y"
                                                      {
   FILE* target_file = fopen("code.xsm","a");
   if(!begin_flag){
@@ -2179,41 +2183,41 @@ yyreduce:
     local_binding=1;
     fclose(target_file);
 }
-#line 2183 "y.tab.c"
+#line 2187 "y.tab.c"
     break;
 
   case 53: /* LdeclBlock: DECL LdecList ENDDECL  */
-#line 468 "expl.y"
+#line 472 "expl.y"
                                    {local_binding=1;}
-#line 2189 "y.tab.c"
+#line 2193 "y.tab.c"
     break;
 
   case 54: /* LdeclBlock: DECL ENDDECL  */
-#line 469 "expl.y"
+#line 473 "expl.y"
                {local_binding=1;}
-#line 2195 "y.tab.c"
+#line 2199 "y.tab.c"
     break;
 
   case 55: /* LdeclBlock: %empty  */
-#line 470 "expl.y"
+#line 474 "expl.y"
              {}
-#line 2201 "y.tab.c"
+#line 2205 "y.tab.c"
     break;
 
   case 56: /* LdecList: LdecList Ldecl  */
-#line 472 "expl.y"
+#line 476 "expl.y"
                            {}
-#line 2207 "y.tab.c"
+#line 2211 "y.tab.c"
     break;
 
   case 57: /* LdecList: Ldecl  */
-#line 472 "expl.y"
+#line 476 "expl.y"
                                       {}
-#line 2213 "y.tab.c"
+#line 2217 "y.tab.c"
     break;
 
   case 58: /* Ldecl: Type IdList ';'  */
-#line 474 "expl.y"
+#line 478 "expl.y"
                         {
   char* declaration_type = (yyvsp[-2].string);
   struct Typetable* declaration_type_entry = TLookup(declaration_type);
@@ -2249,11 +2253,11 @@ yyreduce:
   }
   
 }
-#line 2253 "y.tab.c"
+#line 2257 "y.tab.c"
     break;
 
   case 59: /* IdList: IdList ',' Lid  */
-#line 510 "expl.y"
+#line 514 "expl.y"
                         {
   struct tnode* IDNode = (yyvsp[0].no);
   struct tnode* temp = (yyvsp[-2].no);
@@ -2263,51 +2267,51 @@ yyreduce:
   temp->right = IDNode;  
   (yyval.no) = (yyvsp[-2].no); 
 }
-#line 2267 "y.tab.c"
+#line 2271 "y.tab.c"
     break;
 
   case 61: /* Lid: ID  */
-#line 520 "expl.y"
+#line 524 "expl.y"
         {
    (yyval.no)=createNode(-1,1,-1,NULL,NULL,(yyvsp[0].no)->varname,-1,NULL,NULL);
 }
-#line 2275 "y.tab.c"
+#line 2279 "y.tab.c"
     break;
 
   case 62: /* Lid: MUL ID  */
-#line 523 "expl.y"
+#line 527 "expl.y"
          { //this is for Pointer
   (yyval.no) = createNode(-1,1,-1,TLookup("pointer"),NULL,(yyvsp[0].no)->varname,-1,NULL,NULL);
 }
-#line 2283 "y.tab.c"
+#line 2287 "y.tab.c"
     break;
 
   case 63: /* Body: PBEGIN Slist ReturnStmt END  */
-#line 529 "expl.y"
+#line 533 "expl.y"
                                   {(yyval.no) = createNode(-1,1,1,NULL,NULL,NULL,CONNECTOR_NODE,(yyvsp[-2].no),(yyvsp[-1].no));}
-#line 2289 "y.tab.c"
+#line 2293 "y.tab.c"
     break;
 
   case 64: /* Body: PBEGIN ReturnStmt END  */
-#line 530 "expl.y"
+#line 534 "expl.y"
                         {(yyval.no)=(yyvsp[-1].no);}
-#line 2295 "y.tab.c"
+#line 2299 "y.tab.c"
     break;
 
   case 65: /* Type: INT  */
-#line 532 "expl.y"
+#line 536 "expl.y"
            {(yyval.string) = "int";}
-#line 2301 "y.tab.c"
+#line 2305 "y.tab.c"
     break;
 
   case 66: /* Type: STR  */
-#line 533 "expl.y"
+#line 537 "expl.y"
       {(yyval.string) = "str";}
-#line 2307 "y.tab.c"
+#line 2311 "y.tab.c"
     break;
 
   case 67: /* Type: ID  */
-#line 534 "expl.y"
+#line 538 "expl.y"
      {
     char* type_name = (yyvsp[0].no)->varname;
     if(TLookup((yyvsp[0].no)->varname)==NULL && Clookup((yyvsp[0].no)->varname)==NULL){
@@ -2316,203 +2320,203 @@ yyreduce:
     }
     (yyval.string)=(yyvsp[0].no)->varname;
   }
-#line 2320 "y.tab.c"
+#line 2324 "y.tab.c"
     break;
 
   case 68: /* Slist: Slist Stmt  */
-#line 543 "expl.y"
+#line 547 "expl.y"
                    {
   (yyval.no)=createNode(-1,1,1,NULL,NULL,NULL,CONNECTOR_NODE,(yyvsp[-1].no),(yyvsp[0].no));
 }
-#line 2328 "y.tab.c"
+#line 2332 "y.tab.c"
     break;
 
   case 69: /* Slist: Stmt  */
-#line 546 "expl.y"
+#line 550 "expl.y"
        {(yyval.no)=(yyvsp[0].no);}
-#line 2334 "y.tab.c"
+#line 2338 "y.tab.c"
     break;
 
   case 70: /* Stmt: InputStmt  */
-#line 549 "expl.y"
+#line 553 "expl.y"
                  {(yyval.no)=(yyvsp[0].no);}
-#line 2340 "y.tab.c"
+#line 2344 "y.tab.c"
     break;
 
   case 71: /* Stmt: OutputStmt  */
-#line 550 "expl.y"
+#line 554 "expl.y"
              {(yyval.no)=(yyvsp[0].no);}
-#line 2346 "y.tab.c"
+#line 2350 "y.tab.c"
     break;
 
   case 72: /* Stmt: AsgStmt  */
-#line 551 "expl.y"
+#line 555 "expl.y"
          {(yyval.no)=(yyvsp[0].no);}
-#line 2352 "y.tab.c"
+#line 2356 "y.tab.c"
     break;
 
   case 73: /* Stmt: Ifstmt  */
-#line 552 "expl.y"
+#line 556 "expl.y"
         {(yyval.no)=(yyvsp[0].no);}
-#line 2358 "y.tab.c"
+#line 2362 "y.tab.c"
     break;
 
   case 74: /* Stmt: WhileStmt  */
-#line 553 "expl.y"
+#line 557 "expl.y"
            {(yyval.no)=(yyvsp[0].no);}
-#line 2364 "y.tab.c"
+#line 2368 "y.tab.c"
     break;
 
   case 75: /* Stmt: DoWhileStmt  */
-#line 554 "expl.y"
+#line 558 "expl.y"
              {(yyval.no)=(yyvsp[0].no);}
-#line 2370 "y.tab.c"
+#line 2374 "y.tab.c"
     break;
 
   case 76: /* Stmt: BreakStmt  */
-#line 555 "expl.y"
+#line 559 "expl.y"
            {(yyval.no)=(yyvsp[0].no);}
-#line 2376 "y.tab.c"
+#line 2380 "y.tab.c"
     break;
 
   case 77: /* Stmt: ContinueStmt  */
-#line 556 "expl.y"
+#line 560 "expl.y"
               {(yyval.no)=(yyvsp[0].no);}
-#line 2382 "y.tab.c"
+#line 2386 "y.tab.c"
     break;
 
   case 78: /* Stmt: ReturnStmt  */
-#line 557 "expl.y"
+#line 561 "expl.y"
             {(yyval.no)=(yyvsp[0].no);}
-#line 2388 "y.tab.c"
+#line 2392 "y.tab.c"
     break;
 
   case 79: /* Stmt: BreakpointStmt  */
-#line 558 "expl.y"
+#line 562 "expl.y"
                 {(yyval.no)=(yyvsp[0].no);}
-#line 2394 "y.tab.c"
+#line 2398 "y.tab.c"
     break;
 
   case 80: /* Stmt: initializeStmt  */
-#line 559 "expl.y"
+#line 563 "expl.y"
                 {(yyval.no)=(yyvsp[0].no);}
-#line 2400 "y.tab.c"
+#line 2404 "y.tab.c"
     break;
 
   case 81: /* Stmt: AllocStmt  */
-#line 560 "expl.y"
+#line 564 "expl.y"
            {(yyval.no)=(yyvsp[0].no);}
-#line 2406 "y.tab.c"
+#line 2410 "y.tab.c"
     break;
 
   case 82: /* Stmt: FreeStmt  */
-#line 561 "expl.y"
+#line 565 "expl.y"
           {(yyval.no)=(yyvsp[0].no);}
-#line 2412 "y.tab.c"
+#line 2416 "y.tab.c"
     break;
 
   case 83: /* Stmt: NewStmt  */
-#line 562 "expl.y"
+#line 566 "expl.y"
          {(yyval.no)=(yyvsp[0].no);}
-#line 2418 "y.tab.c"
+#line 2422 "y.tab.c"
     break;
 
   case 84: /* InputStmt: READ '(' Identifier ')' ';'  */
-#line 569 "expl.y"
+#line 573 "expl.y"
                                         {
     // printf("Reading");
     (yyval.no) = makeNonLeafNode((yyvsp[-2].no),NULL,READ_NODE,"_");
   }
-#line 2427 "y.tab.c"
+#line 2431 "y.tab.c"
     break;
 
   case 85: /* OutputStmt: WRITE '(' expr ')' ';'  */
-#line 574 "expl.y"
+#line 578 "expl.y"
                                     {(yyval.no) = makeNonLeafNode((yyvsp[-2].no),NULL,WRITE_NODE,"_");}
-#line 2433 "y.tab.c"
+#line 2437 "y.tab.c"
     break;
 
   case 86: /* AsgStmt: Identifier '=' expr ';'  */
-#line 576 "expl.y"
+#line 580 "expl.y"
                                   {
   // printf("%s\n",$1->Gentry->name);
   (yyval.no) = makeNonLeafNode((yyvsp[-3].no),(yyvsp[-1].no),OPERATOR_NODE,"=");
   }
-#line 2442 "y.tab.c"
+#line 2446 "y.tab.c"
     break;
 
   case 87: /* BreakStmt: BREAK ';'  */
-#line 581 "expl.y"
+#line 585 "expl.y"
                       {(yyval.no)=makeNonLeafNode(NULL,NULL,BREAK_NODE,"_");}
-#line 2448 "y.tab.c"
+#line 2452 "y.tab.c"
     break;
 
   case 88: /* BreakpointStmt: BREAKPOINT ';'  */
-#line 583 "expl.y"
+#line 587 "expl.y"
                                 {(yyval.no)=makeNonLeafNode(NULL,NULL,BREAKPOINT_NODE,"_");}
-#line 2454 "y.tab.c"
+#line 2458 "y.tab.c"
     break;
 
   case 89: /* ContinueStmt: CONTINUE ';'  */
-#line 585 "expl.y"
+#line 589 "expl.y"
                             {(yyval.no)=makeNonLeafNode(NULL,NULL,CONTINUE_NODE,"_");}
-#line 2460 "y.tab.c"
+#line 2464 "y.tab.c"
     break;
 
   case 90: /* Ifstmt: IF '(' expr ')' THEN Slist ELSE Slist ENDIF ';'  */
-#line 587 "expl.y"
+#line 591 "expl.y"
                                                          {
   struct tnode* if_else_node = makeNonLeafNode((yyvsp[-7].no),(yyvsp[-4].no),IF_ELSE_NODE,"_");
   if_else_node->middle = (yyvsp[-2].no);
   (yyval.no) = if_else_node;
 }
-#line 2470 "y.tab.c"
+#line 2474 "y.tab.c"
     break;
 
   case 91: /* Ifstmt: IF '(' expr ')' THEN Slist ENDIF ';'  */
-#line 592 "expl.y"
+#line 596 "expl.y"
                                        {(yyval.no) = makeNonLeafNode((yyvsp[-5].no),(yyvsp[-2].no),IF_NODE,"_");}
-#line 2476 "y.tab.c"
+#line 2480 "y.tab.c"
     break;
 
   case 92: /* WhileStmt: WHILE '(' expr ')' DO Slist ENDWHILE ';'  */
-#line 595 "expl.y"
+#line 599 "expl.y"
                                                      {(yyval.no) = makeNonLeafNode((yyvsp[-5].no),(yyvsp[-2].no),WHILE_NODE,"_");}
-#line 2482 "y.tab.c"
+#line 2486 "y.tab.c"
     break;
 
   case 93: /* DoWhileStmt: DO Slist WHILE '(' expr ')' ';'  */
-#line 597 "expl.y"
+#line 601 "expl.y"
                                               {(yyval.no) = makeNonLeafNode((yyvsp[-2].no),(yyvsp[-5].no),DO_WHILE_NODE,"_");}
-#line 2488 "y.tab.c"
+#line 2492 "y.tab.c"
     break;
 
   case 94: /* ReturnStmt: RETURN expr ';'  */
-#line 599 "expl.y"
+#line 603 "expl.y"
                              {(yyval.no) = makeNonLeafNode((yyvsp[-1].no),NULL,RETURN_NODE,"_");}
-#line 2494 "y.tab.c"
+#line 2498 "y.tab.c"
     break;
 
   case 95: /* initializeStmt: Identifier '=' INITIALIZE '(' ')' ';'  */
-#line 601 "expl.y"
+#line 605 "expl.y"
                                                        {(yyval.no) = makeNonLeafNode((yyvsp[-5].no),NULL,INITIALIZE_NODE,"_");}
-#line 2500 "y.tab.c"
+#line 2504 "y.tab.c"
     break;
 
   case 96: /* AllocStmt: Identifier '=' ALLOC '(' ')' ';'  */
-#line 603 "expl.y"
+#line 607 "expl.y"
                                              {(yyval.no)=makeNonLeafNode((yyvsp[-5].no),NULL,ALLOC_NODE,"_");}
-#line 2506 "y.tab.c"
+#line 2510 "y.tab.c"
     break;
 
   case 97: /* FreeStmt: FREE '(' Identifier ')' ';'  */
-#line 605 "expl.y"
+#line 609 "expl.y"
                                        {(yyval.no)=makeNonLeafNode((yyvsp[-2].no),NULL,FREE_NODE,"_");}
-#line 2512 "y.tab.c"
+#line 2516 "y.tab.c"
     break;
 
   case 98: /* NewStmt: Identifier '=' NEW '(' Type ')' ';'  */
-#line 608 "expl.y"
+#line 612 "expl.y"
                                               {
     if((yyvsp[-6].no)->Ctype==NULL){
       printf("ERROR: syntax error NEW assignment to non-class type\n");
@@ -2524,89 +2528,89 @@ yyreduce:
     }
     (yyval.no)=makeNonLeafNode((yyvsp[-6].no),NULL,NEW_NODE,"_");
   }
-#line 2528 "y.tab.c"
+#line 2532 "y.tab.c"
     break;
 
   case 99: /* expr: expr PLUS expr  */
-#line 622 "expl.y"
+#line 626 "expl.y"
                        {(yyval.no) = makeNonLeafNode((yyvsp[-2].no),(yyvsp[0].no),OPERATOR_NODE,"+");}
-#line 2534 "y.tab.c"
+#line 2538 "y.tab.c"
     break;
 
   case 100: /* expr: expr MINUS expr  */
-#line 623 "expl.y"
+#line 627 "expl.y"
                       {(yyval.no) = makeNonLeafNode((yyvsp[-2].no),(yyvsp[0].no),OPERATOR_NODE,"-");}
-#line 2540 "y.tab.c"
+#line 2544 "y.tab.c"
     break;
 
   case 101: /* expr: expr MUL expr  */
-#line 624 "expl.y"
+#line 628 "expl.y"
                   {(yyval.no) = makeNonLeafNode((yyvsp[-2].no),(yyvsp[0].no),OPERATOR_NODE,"*");}
-#line 2546 "y.tab.c"
+#line 2550 "y.tab.c"
     break;
 
   case 102: /* expr: expr DIV expr  */
-#line 625 "expl.y"
+#line 629 "expl.y"
                   {(yyval.no) = makeNonLeafNode((yyvsp[-2].no),(yyvsp[0].no),OPERATOR_NODE,"/");}
-#line 2552 "y.tab.c"
+#line 2556 "y.tab.c"
     break;
 
   case 103: /* expr: expr MOD expr  */
-#line 626 "expl.y"
+#line 630 "expl.y"
                   {(yyval.no)=makeNonLeafNode((yyvsp[-2].no),(yyvsp[0].no),OPERATOR_NODE,"%");}
-#line 2558 "y.tab.c"
+#line 2562 "y.tab.c"
     break;
 
   case 104: /* expr: expr LT expr  */
-#line 627 "expl.y"
+#line 631 "expl.y"
                  {(yyval.no) = makeNonLeafNode((yyvsp[-2].no),(yyvsp[0].no),OPERATOR_NODE,"<");}
-#line 2564 "y.tab.c"
+#line 2568 "y.tab.c"
     break;
 
   case 105: /* expr: expr LTE expr  */
-#line 628 "expl.y"
+#line 632 "expl.y"
                   {(yyval.no) = makeNonLeafNode((yyvsp[-2].no),(yyvsp[0].no),OPERATOR_NODE,"<=");}
-#line 2570 "y.tab.c"
+#line 2574 "y.tab.c"
     break;
 
   case 106: /* expr: expr GT expr  */
-#line 629 "expl.y"
+#line 633 "expl.y"
                  {(yyval.no) = makeNonLeafNode((yyvsp[-2].no),(yyvsp[0].no),OPERATOR_NODE,">");}
-#line 2576 "y.tab.c"
+#line 2580 "y.tab.c"
     break;
 
   case 107: /* expr: expr GTE expr  */
-#line 630 "expl.y"
+#line 634 "expl.y"
                   {(yyval.no) = makeNonLeafNode((yyvsp[-2].no),(yyvsp[0].no),OPERATOR_NODE,">=");}
-#line 2582 "y.tab.c"
+#line 2586 "y.tab.c"
     break;
 
   case 108: /* expr: expr EQUALS expr  */
-#line 631 "expl.y"
+#line 635 "expl.y"
                      {(yyval.no) = makeNonLeafNode((yyvsp[-2].no),(yyvsp[0].no),OPERATOR_NODE,"==");}
-#line 2588 "y.tab.c"
+#line 2592 "y.tab.c"
     break;
 
   case 109: /* expr: expr NOTEQUALS expr  */
-#line 632 "expl.y"
+#line 636 "expl.y"
                         {(yyval.no) = makeNonLeafNode((yyvsp[-2].no),(yyvsp[0].no),OPERATOR_NODE,"!=");}
-#line 2594 "y.tab.c"
+#line 2598 "y.tab.c"
     break;
 
   case 110: /* expr: expr AND expr  */
-#line 633 "expl.y"
+#line 637 "expl.y"
                   {(yyval.no)=makeNonLeafNode((yyvsp[-2].no),(yyvsp[0].no),OPERATOR_NODE,"&&");}
-#line 2600 "y.tab.c"
+#line 2604 "y.tab.c"
     break;
 
   case 111: /* expr: expr OR expr  */
-#line 634 "expl.y"
+#line 638 "expl.y"
                  {(yyval.no)=makeNonLeafNode((yyvsp[-2].no),(yyvsp[0].no),OPERATOR_NODE,"||");}
-#line 2606 "y.tab.c"
+#line 2610 "y.tab.c"
     break;
 
   case 112: /* expr: ID '(' ArgList ')'  */
-#line 635 "expl.y"
+#line 639 "expl.y"
                       {
     struct tnode* function_node = makeNonLeafNode((yyvsp[-3].no),NULL,FUNCTION_NODE,"_");
     function_node->argList = (yyvsp[-1].arglist);
@@ -2626,71 +2630,71 @@ yyreduce:
     function_node->type = Gentry->type;
     (yyval.no)=function_node;
   }
-#line 2630 "y.tab.c"
+#line 2634 "y.tab.c"
     break;
 
   case 113: /* expr: '(' expr ')'  */
-#line 654 "expl.y"
+#line 658 "expl.y"
                   {(yyval.no) = (yyvsp[-1].no);}
-#line 2636 "y.tab.c"
+#line 2640 "y.tab.c"
     break;
 
   case 114: /* expr: NUM  */
-#line 655 "expl.y"
+#line 659 "expl.y"
           {(yyval.no) = (yyvsp[0].no);}
-#line 2642 "y.tab.c"
+#line 2646 "y.tab.c"
     break;
 
   case 115: /* expr: STRING  */
-#line 656 "expl.y"
+#line 660 "expl.y"
            {(yyval.no)=(yyvsp[0].no);}
-#line 2648 "y.tab.c"
+#line 2652 "y.tab.c"
     break;
 
   case 116: /* expr: Identifier  */
-#line 657 "expl.y"
+#line 661 "expl.y"
                {(yyval.no)=(yyvsp[0].no);}
-#line 2654 "y.tab.c"
+#line 2658 "y.tab.c"
     break;
 
   case 117: /* expr: PNULL  */
-#line 658 "expl.y"
+#line 662 "expl.y"
           {(yyval.no)=(yyvsp[0].no);}
-#line 2660 "y.tab.c"
+#line 2664 "y.tab.c"
     break;
 
   case 118: /* expr: FieldFunction  */
-#line 659 "expl.y"
+#line 663 "expl.y"
                   {
     (yyval.no) = (yyvsp[0].no);
   }
-#line 2668 "y.tab.c"
+#line 2672 "y.tab.c"
     break;
 
   case 119: /* ArgList: ArgList ',' expr  */
-#line 664 "expl.y"
+#line 668 "expl.y"
                            {
   (yyval.arglist)=append_arglist((yyvsp[-2].arglist),(yyvsp[0].no));
 }
-#line 2676 "y.tab.c"
+#line 2680 "y.tab.c"
     break;
 
   case 120: /* ArgList: expr  */
-#line 667 "expl.y"
+#line 671 "expl.y"
        {
   (yyval.arglist)=create_arglist((yyvsp[0].no));
 }
-#line 2684 "y.tab.c"
+#line 2688 "y.tab.c"
     break;
 
   case 121: /* ArgList: %empty  */
-#line 670 "expl.y"
+#line 674 "expl.y"
   {(yyval.arglist)=NULL;}
-#line 2690 "y.tab.c"
+#line 2694 "y.tab.c"
     break;
 
   case 122: /* Identifier: ID  */
-#line 672 "expl.y"
+#line 676 "expl.y"
                 {
     struct tnode* IDNode = (yyvsp[0].no);
   
@@ -2705,11 +2709,11 @@ yyreduce:
     }
     (yyval.no) = IDNode;
 }
-#line 2709 "y.tab.c"
+#line 2713 "y.tab.c"
     break;
 
   case 123: /* Identifier: ID '[' index ']'  */
-#line 686 "expl.y"
+#line 690 "expl.y"
                    {
     struct tnode* IDNode = (yyvsp[-3].no);
     int table_type = check_identifier(IDNode);
@@ -2722,11 +2726,11 @@ yyreduce:
     }
     (yyval.no) = makeNonLeafNode((yyvsp[-3].no), (yyvsp[-1].no), ARRAY_NODE, "_");
 }
-#line 2726 "y.tab.c"
+#line 2730 "y.tab.c"
     break;
 
   case 124: /* Identifier: ID '[' index ']' '[' index ']'  */
-#line 698 "expl.y"
+#line 702 "expl.y"
                                  {
     struct tnode* IDNode = (yyvsp[-6].no);
     int table_type = check_identifier(IDNode);
@@ -2739,11 +2743,11 @@ yyreduce:
     struct tnode* _2d_array_node = makeNonLeafNode((yyvsp[-4].no), (yyvsp[-1].no), _2D_ARRAY_NODE, "_");
     (yyval.no) = makeNonLeafNode((yyvsp[-6].no), _2d_array_node, ARRAY_NODE, "_");
 }
-#line 2743 "y.tab.c"
+#line 2747 "y.tab.c"
     break;
 
   case 125: /* Identifier: MUL ID  */
-#line 710 "expl.y"
+#line 714 "expl.y"
          {
     struct tnode* IDNode = (yyvsp[0].no);
     int table_type = check_identifier(IDNode);
@@ -2766,11 +2770,11 @@ yyreduce:
     dereference_node->type = IDNode->type;
     (yyval.no) = dereference_node;
 }
-#line 2770 "y.tab.c"
+#line 2774 "y.tab.c"
     break;
 
   case 126: /* Identifier: '&' Identifier  */
-#line 732 "expl.y"
+#line 736 "expl.y"
                  {
     struct tnode* IDNode = (yyvsp[0].no);
    
@@ -2794,21 +2798,21 @@ yyreduce:
         (yyval.no) = addressNode;
     }
 }
-#line 2798 "y.tab.c"
+#line 2802 "y.tab.c"
     break;
 
   case 127: /* Identifier: Field  */
-#line 755 "expl.y"
+#line 759 "expl.y"
         {
   struct tnode* field_node = makeNonLeafNode((yyvsp[0].no), NULL, FIELD_NODE, "_");
   field_validifier(field_node);  
   (yyval.no) = field_node;
 }
-#line 2808 "y.tab.c"
+#line 2812 "y.tab.c"
     break;
 
   case 128: /* Field: Field '.' ID  */
-#line 762 "expl.y"
+#line 766 "expl.y"
                      {
   struct tnode* temp = (yyvsp[-2].no);
   while(temp->left!=NULL){
@@ -2817,11 +2821,11 @@ yyreduce:
   temp->left=(yyvsp[0].no);
   (yyval.no)=(yyvsp[-2].no);
 }
-#line 2821 "y.tab.c"
+#line 2825 "y.tab.c"
     break;
 
   case 129: /* Field: ID '[' index ']' '.' ID  */
-#line 771 "expl.y"
+#line 775 "expl.y"
                            {
   // printf("Array field\n");
   (yyvsp[-5].no)->left =(yyvsp[0].no);
@@ -2836,11 +2840,11 @@ yyreduce:
   }
   (yyval.no) =  (yyvsp[-5].no);
 }
-#line 2840 "y.tab.c"
+#line 2844 "y.tab.c"
     break;
 
   case 130: /* Field: ID '.' ID  */
-#line 785 "expl.y"
+#line 789 "expl.y"
             {
   // printf("re");
   check_identifier((yyvsp[-2].no));
@@ -2851,11 +2855,11 @@ yyreduce:
   (yyvsp[-2].no)->left = (yyvsp[0].no);
   (yyval.no)=(yyvsp[-2].no);
 }
-#line 2855 "y.tab.c"
+#line 2859 "y.tab.c"
     break;
 
   case 131: /* Field: SELF '.' ID  */
-#line 795 "expl.y"
+#line 799 "expl.y"
               {
   if(!cptr){//self is called outside the class definition
     printf("ERROR: \"self\" keyword is used under class definition\n");
@@ -2866,11 +2870,11 @@ yyreduce:
   self_node->Ctype = cptr;
   (yyval.no)=self_node;
 }
-#line 2870 "y.tab.c"
+#line 2874 "y.tab.c"
     break;
 
   case 132: /* FieldFunction: ID '.' ID '(' ArgList ')'  */
-#line 807 "expl.y"
+#line 811 "expl.y"
                                          {
   struct tnode* function_node = makeNonLeafNode((yyvsp[-3].no),(yyvsp[-5].no),FUNCTION_NODE,"_");
 
@@ -2885,19 +2889,21 @@ yyreduce:
   function_node->varname = strdup((yyvsp[-3].no)->varname);
   (yyval.no)=function_node;
 }
-#line 2889 "y.tab.c"
+#line 2893 "y.tab.c"
     break;
 
   case 133: /* FieldFunction: SELF '.' ID '(' ArgList ')'  */
-#line 821 "expl.y"
+#line 825 "expl.y"
                              {
   if(!cptr){
     printf("ERROR: \"self\" keyword is used under class definition\n");
     return -1;
   }
-  struct tnode* class_node = makeNonLeafNode(NULL,NULL,SELF_NODE,"_");
-  class_node->Ctype = cptr;
-  struct tnode* function_node = makeNonLeafNode((yyvsp[-3].no),class_node,FUNCTION_NODE,"_");
+  struct tnode* self_node = makeNonLeafNode(NULL,NULL,SELF_NODE,"_");
+  struct tnode* field_node = makeNonLeafNode(self_node,NULL,FIELD_NODE,"_");
+  self_node->Ctype = cptr;
+  field_node->Ctype= cptr;
+  struct tnode* function_node = makeNonLeafNode((yyvsp[-3].no),field_node,FUNCTION_NODE,"_");
   struct Memberfunclist* member_function = Class_Mlookup(cptr,(yyvsp[-3].no)->varname);
   if(member_function==NULL){
     printf("ERROR: no such method exists for class %s\n",cptr->name);
@@ -2909,11 +2915,11 @@ yyreduce:
   function_node->varname = strdup((yyvsp[-3].no)->varname);
   (yyval.no)=function_node;
 }
-#line 2913 "y.tab.c"
+#line 2919 "y.tab.c"
     break;
 
   case 134: /* FieldFunction: Field '.' ID '(' ArgList ')'  */
-#line 840 "expl.y"
+#line 846 "expl.y"
                               {
   struct tnode* field_node = makeNonLeafNode((yyvsp[-5].no), NULL, FIELD_NODE, "_");
   field_validifier(field_node);  
@@ -2930,11 +2936,11 @@ yyreduce:
   function_node->varname = strdup((yyvsp[-3].no)->varname);
   (yyval.no)=function_node;
 }
-#line 2934 "y.tab.c"
+#line 2940 "y.tab.c"
     break;
 
   case 135: /* index: expr  */
-#line 856 "expl.y"
+#line 862 "expl.y"
              {
     if(strcmp((yyvsp[0].no)->type->name,"int")!=0){
       printf("ERROR:indexing by a non-int type \n");
@@ -2942,11 +2948,11 @@ yyreduce:
     }
     (yyval.no)=(yyvsp[0].no);
   }
-#line 2946 "y.tab.c"
+#line 2952 "y.tab.c"
     break;
 
 
-#line 2950 "y.tab.c"
+#line 2956 "y.tab.c"
 
       default: break;
     }
@@ -3139,7 +3145,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 865 "expl.y"
+#line 871 "expl.y"
 
 
 void yyerror(char const *s)

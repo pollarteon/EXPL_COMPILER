@@ -146,7 +146,7 @@ void print_GSymbolTable();
 
 extern struct Classtable* class_table;
 extern struct Classtable* cptr;
-extern int class_index;
+extern int class_field_index;
 extern int member_function_pos;
 
 struct Classtable* CInstall(char* name,char* parent_class_name);
@@ -169,7 +169,7 @@ void Print_VirtFuncTable(struct Classtable* class);
 
 extern int local_binding;
 extern int param_binding;
-
+extern int self_binded;
 extern Lsymbol* Ltable;
 
 void L_Install(char* name,Typetable* type,int isArg);
