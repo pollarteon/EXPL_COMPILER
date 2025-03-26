@@ -1063,7 +1063,6 @@ int code_gen(struct tnode *t, FILE *target_file)
         int reg2 = code_gen(t->right, target_file);
         return -1;
     }
-
     return -1;
 }
 
