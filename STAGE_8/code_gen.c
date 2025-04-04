@@ -91,6 +91,7 @@ void header_code_gen(FILE *target_file)
 }
 void entry_code_gen(FILE* target_file){
     fprintf(target_file,"ENTRY:\n");
+    VFunctionTable_code_gen(target_file,class_table);//setting up virtual function table in the stack
     fprintf(target_file, "MOV SP,%d\n", binding_pos); // binding pos should contain the base of the stack after declarations
     fprintf(target_file, "MOV BP, SP\n");
     fprintf(target_file, "PUSH R0\n");
@@ -98,7 +99,27 @@ void entry_code_gen(FILE* target_file){
     fprintf(target_file, "INT 10\n");
     return;
 }
+void VFunctionTable_code_gen(FILE* target_file,struct Classtable* class_table){
+    struct Classtable* temp = class_table;
+    fprintf(target_file,"MOV SP, 4095\n");
+    while (temp != NULL) {
+        struct Memberfunclist *method = temp->Vfuncptr;
+        int flabels_added =0;
+        while(method!=NULL){
+            fprintf(target_file, "MOV R0, \"F%d\"\n", method->Flabel);
+            fprintf(target_file, "PUSH R0\n");     
+            method = method->next;
+            flabels_added++;
+        }
+        while(flabels_added<8){
+            fprintf(target_file, "MOV R0, -1\n");
+            fprintf(target_file, "PUSH R0\n");
+            flabels_added++;
+        }
+        temp = temp->next;
+    }
 
+}
 
 void function_begin_code_gen(FILE *target_file, struct Lsymbol *Ltable)
 {
@@ -266,7 +287,7 @@ int field_code_gen(struct tnode* t, FILE* target_file,int expr) {
     else{ // load class address (self) address into a register
         class_type = identifier_node->Ctype;
         fprintf(target_file,"MOV R%d, BP\n",id_reg);
-        fprintf(target_file,"SUB R%d, %d\n",id_reg,2+LLookUp("self")->binding);
+        fprintf(target_file,"SUB R%d, %d\n",id_reg,2+LLookUp("self")->binding+1);//LLookup actually points to VFunc and self is above it in the stack
         fprintf(target_file,"MOV R%d, [R%d]\n",id_reg,id_reg);
         //now id_reg contains the self class address
         // identifier_node=identifier_node->left;
@@ -322,12 +343,12 @@ int field_code_gen(struct tnode* t, FILE* target_file,int expr) {
         struct Fieldlist* field;
         if(type_of_identifier){
             field = FLookup(type_of_identifier, curr_field_node->varname);
-            printf("%s\n",type_of_identifier->name);
+            // printf("%s\n",type_of_identifier->name);
         }
             
         if(class_type){
             field = Class_Flookup(class_type,curr_field_node->varname);
-            printf("%s\n",class_type->name);
+            printf("%s\n",curr_field_node->varname);
         }
         if (field == NULL) {
             printf("Error: Field %s not found in type/class %s\n", curr_field_node->varname, type_of_identifier->name);
@@ -523,16 +544,28 @@ void if_else_code_gen(struct tnode *t, FILE *target_file)
 {
     int label1 = getLabel();
 
+    //saving isallocated states of all class variables
+    createAllocatedList();
     // generating code for guard expression....
     int gaurd_reg = code_gen(t->left, target_file);
     fprintf(target_file, "JZ R%d, L%d\n", gaurd_reg, label1);
-    // printf("%d r freee\n",register_num);
     freeReg();
+    // Restore Gsymbol table 
+    restoreGlobalAllocation();
+
     int label2 = getLabel();
     code_gen(t->right, target_file);
+    // Restore Gsymbol table 
+    restoreGlobalAllocation();
+   
     fprintf(target_file, "JMP L%d\n", label2);
     fprintf(target_file, "L%d:\n", label1);
     code_gen(t->middle, target_file);
+
+    // Restore Gsymbol table 
+    restoreGlobalAllocation();
+    freeAllocatedList();
+
     fprintf(target_file, "L%d:\n", label2);
     return;
 }
@@ -648,10 +681,15 @@ int function_code_gen(struct tnode *t, FILE *target_file)
 {
     int f_label;
     int isMethod =0;
+    int method_index =-1;
+    int Flabel_reg; //Method invocatation...
+
     if(t->right){//Function is a class Method
         struct Memberfunclist* member_function = Class_Mlookup(t->right->Ctype,t->left->varname);
         f_label = member_function->Flabel;
         isMethod =1;
+        method_index = member_function->Funcposition;
+        // printf("Method Index = %d\n",method_index);
     }else{//normal function
         f_label = t->Gentry->flabel;
     }
@@ -660,17 +698,27 @@ int function_code_gen(struct tnode *t, FILE *target_file)
     struct FuncArgs *reversed_args = reverse_arglist(arg_list);
     int reg_index = 0;
     int return_val_reg;
+    //saving register context
     for (reg_index = 0; reg_index <= register_num; reg_index++)
     {
         fprintf(target_file, "PUSH R%d\n", reg_index);
     }
+
+    // fprintf(target_file, "PUSH R0\n");
+    
+
     return_val_reg = getReg();
     struct FuncArgs *temp = reversed_args;
     // print_arglist(temp);
     if(isMethod){//push address for accessing self
+
         int self_reg = getReg();
-        if(t->right->nodetype!=SELF_NODE && t->right->nodetype!=FIELD_NODE)
-        fprintf(target_file,"MOV R%d, [%d]\n",self_reg,t->right->Gentry->binding);
+        int VfuncptrReg = getReg();
+        if(t->right->nodetype!=SELF_NODE && t->right->nodetype!=FIELD_NODE){
+            //if classname.method()
+            fprintf(target_file,"MOV R%d, [%d]\n",self_reg,t->right->Gentry->binding);
+            fprintf(target_file,"MOV R%d, [%d]\n",VfuncptrReg,t->right->Gentry->binding+1);
+        }
         else{
             if(t->right->nodetype==FIELD_NODE){
                 struct tnode* field_identifier = t->right->left;
@@ -678,15 +726,28 @@ int function_code_gen(struct tnode *t, FILE *target_file)
                     //if self.method()
                     //access self from the run-time stack
                     fprintf(target_file, "MOV R%d, BP\n",self_reg );
-                    fprintf(target_file, "SUB R%d, %d\n", self_reg, 2 + LLookUp("self")->binding);
+                    fprintf(target_file, "SUB R%d, %d\n", self_reg, 2 + LLookUp("self")->binding+1);
                     fprintf(target_file, "MOV R%d, [R%d]\n", self_reg, self_reg);
                 }
             }
+            
+            //accessing label from virtual function pointer
+            
+            fprintf(target_file,"MOV R%d, BP\n",VfuncptrReg);
+            fprintf(target_file,"SUB R%d, %d\n",VfuncptrReg,2+(LLookUp("self")->binding));
+            fprintf(target_file,"MOV R%d, [R%d]\n",VfuncptrReg,VfuncptrReg);
+            
         }
+        Flabel_reg=getReg();
+        fprintf(target_file,"MOV R%d, R%d\n",Flabel_reg,VfuncptrReg);
+        fprintf(target_file,"ADD R%d, %d\n",Flabel_reg,method_index);
+        fprintf(target_file,"MOV R%d, [R%d]\n",Flabel_reg,Flabel_reg);
         fprintf(target_file,"PUSH R%d\n",self_reg);
-        freeReg();//freeing self_reg
+        fprintf(target_file,"PUSH R%d\n",VfuncptrReg);
+        
+        
     }
-    while (temp != NULL)
+    while (temp != NULL)//temp contains the reversed args
     {
         int resultReg = code_gen(temp->arguement, target_file); // Generate code for the argument
         fprintf(target_file, "PUSH R%d\n", resultReg);          // Push argument to stack
@@ -697,7 +758,15 @@ int function_code_gen(struct tnode *t, FILE *target_file)
     fprintf(target_file, "PUSH R0\n");
 
     // Calling the function
+    if(!isMethod)
     fprintf(target_file, "CALL F%d\n", f_label);
+    else{
+        fprintf(target_file,"CALL R%d\n",Flabel_reg);
+        freeReg();//freeing Flabel_reg
+        freeReg();//freeing self_reg
+        freeReg();//freeing VfuncptrReg
+    }
+    
 
     fprintf(target_file, "POP R%d\n", return_val_reg);
 
@@ -714,8 +783,9 @@ int function_code_gen(struct tnode *t, FILE *target_file)
         freeReg();
         temp = temp->next;
     }
-    if(isMethod){//push address for accessing self
+    if(isMethod){//pop self anf VfuncPtrReg
         int pop_reg = getReg();
+        fprintf(target_file,"POP R%d\n",pop_reg);
         fprintf(target_file,"POP R%d\n",pop_reg);
         freeReg();
     }
@@ -877,7 +947,18 @@ int code_gen(struct tnode *t, FILE *target_file)
         return -1;
     }
     else if (t->nodetype == NEW_NODE){
-        alloc_code_gen(t,target_file);
+        struct Gsymbol* identifier = t->left->Gentry;
+        if(!(identifier->allocated)){
+            alloc_code_gen(t,target_file);
+            identifier->allocated=1;
+        }else{
+            fprintf(target_file,"MOV [%d], [%d]\n",identifier->binding,identifier->binding);
+        }
+        //storing the virtual function table address of the class in the 2nd word.....
+        struct Classtable* arguement_class = t->right->Ctype;
+        int variable_binding_addr  = identifier->binding;
+        // storing variable fun ctable ptr to the second word...
+        fprintf(target_file,"MOV [%d], %d\n",variable_binding_addr+1,4096+(arguement_class->class_index)*8);
         return -1;
     }
     else if (t->nodetype == OPERATOR_NODE)
@@ -889,7 +970,24 @@ int code_gen(struct tnode *t, FILE *target_file)
             if(t->right->nodetype==NULL_NODE){
                 reg2 =getReg();
                 fprintf(target_file,"MOV R%d, \"0x0\"\n",reg2);
-            }else{
+            }
+            else if(t->left->Gentry && t->left->Gentry->Ctype){//if we are assigning to a class variable
+                reg2 = getReg();
+                int storage_location = t->left->Gentry->binding;
+                struct tnode* rhs_class_node = t->right;
+                struct Gsymbol* rhs_class_gsymbol = rhs_class_node->Gentry;
+                struct tnode* lhs_class_node = t->left;
+                struct Gsymbol* lhs_class_gsymbol = lhs_class_node->Gentry;
+                int lhs_binding = lhs_class_gsymbol->binding;
+                int rhs_binding = rhs_class_gsymbol->binding;
+                fprintf(target_file,"MOV R%d, %d\n",reg2,rhs_binding);
+                fprintf(target_file,"MOV [%d], [R%d]\n",storage_location,reg2);
+                fprintf(target_file,"MOV R%d, %d\n",reg2,rhs_binding+1);
+                fprintf(target_file,"MOV [%d], [R%d]\n",storage_location+1,reg2);
+                freeReg();
+                return -1;
+            }
+            else{
                 reg2 = code_gen(t->right, target_file);
             }
             if (t->left->nodetype == ARRAY_NODE)

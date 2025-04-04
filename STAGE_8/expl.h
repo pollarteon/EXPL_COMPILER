@@ -33,6 +33,7 @@
 #define NEW_NODE 32
 #define DELETE_NODE 33
 #define SELF_NODE 34
+#define NEW_ARG_NODE 35
 
 typedef struct ParamList
 {
@@ -56,6 +57,7 @@ typedef struct Gsymbol
     int binding; // stores the static memory address allocated to the variable
     int row;     // for 1D arrays and 2D arrays
     int col;     // for 2D arrays
+    int allocated; //for preventing redundant mem allocations in newStatements
     struct ParamList* param_list;
     int flabel;
     struct Gsymbol *next;
@@ -89,6 +91,7 @@ typedef struct Classtable{
     char* name;
     struct Fieldlist * memberField;
     struct Memberfunclist *Vfuncptr;
+    struct Classtable* parentPtr;
     int class_index;
     int field_count;
     int method_count;
@@ -127,6 +130,12 @@ typedef struct IdList
     struct IdList* next;
 }IdList;
 
+typedef struct AllocatedList
+{
+    int allocated;
+    struct AllocatedList* next;
+}AllocatedList;
+
 
 //======================================================================================================================
 extern int inside_class ;
@@ -161,6 +170,11 @@ void Class_Finstall(struct Classtable* cptr,struct Fieldlist* field);
 struct Memberfunclist* Class_Mlookup(struct Classtable* Ctype,char* name);
 
 struct Fieldlist* Class_Flookup(struct Classtable* CType,char* name);
+
+void CopyFieldsAndMethods(struct Classtable* class1,struct Classtable* class2);
+
+int IsDescendant(struct Classtable* child,struct Classtable* parent);
+
 
 void Print_Classtable();
 
@@ -235,6 +249,18 @@ int field_validifier(struct tnode* field_node);
 int check_identifier(struct tnode* t);
 
 int returnStmt_checker(struct tnode* t,Typetable* type);
+
+int methodlist_validifier(struct Classtable* class);
+
+extern struct AllocatedList* allocated_list;
+
+void Allocated_list_Install(int allocated);
+
+void createAllocatedList();
+
+void restoreGlobalAllocation();
+
+void freeAllocatedList();
 
 void preorder(struct tnode* t);
 // /*Make a tnode with opertor, left and right branches set*/

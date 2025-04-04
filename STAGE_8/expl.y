@@ -92,7 +92,7 @@ TypeDef : ID '{' FieldDeclList '}' {
     temp=temp->next;
   }
   declared_type->size = total_size;
-  PrintFieldlist(fields);
+  
 
 }
 
@@ -148,30 +148,41 @@ Classdef : Cname '{' DECL CFieldlists MethodDecl ENDDECL MethodDefns '}' {
       field_traverser=field_traverser->next;
     }
     class->field_count = field_index;
-    PrintFieldlist(class->memberField);
+    // PrintFieldlist(class->memberField);
+    methodlist_validifier(class);
     // Print_VirtFuncTable(cptr);
+    // Print_VirtFuncTable(class->parentPtr);
     cptr=NULL;
     class_field_index =0;
+    binding_pos+=8;
   }
   ;
 
 Cname : ID {
     cptr =CInstall($1->varname,NULL);
     $$=$1->varname;
-  };
+  }
+|  ID EXTENDS ID {
+    cptr = CInstall($1->varname,$3->varname);
+    $$=$1->varname;
+  }
+  ;
 
 
 
-CFieldlists : CFieldlists Cfield {Class_Finstall(cptr,$2);}
-| Cfield {Class_Finstall(cptr,$1);}
+CFieldlists : CFieldlists Cfield {}
+| {}
 
 Cfield : TypeName ID ';' {
   struct Typetable* type = TLookup($1);
   struct Classtable* class = Clookup($1);
+  class_field_index = cptr->field_count;
+  printf("field_count :%d\n",class_field_index);
   if(type==NULL && class==NULL){
     printf("ERROR: Type/Class is undefined %s\n",$1);
   }
-  $$ = Fcreate($2->varname,class_field_index++,type,class);
+  struct Fieldlist* memberfield = Fcreate($2->varname,class_field_index++,type,class);
+  Class_Finstall(cptr,memberfield);
 }
 
 MethodDecl : Mdecl MethodDecl {L_cleanup();local_binding=1;param_binding=1;}
@@ -179,14 +190,16 @@ MethodDecl : Mdecl MethodDecl {L_cleanup();local_binding=1;param_binding=1;}
 ;
 
 Mdecl : TypeName ID '(' ParamList ')' ';'{
+  
   Class_Minstall(cptr,$2->varname,TLookup($1),$4);
+  // Print_VirtFuncTable(cptr);
 }
 | TypeName ID '(' ')' ';' {
   Class_Minstall(cptr,$2->varname,TLookup($1),NULL);
+  // Print_VirtFuncTable(cptr);
 }
 MethodDefns : FdefBlock {
-    Print_Classtable();
-    PrintFieldlist(cptr->memberField);
+    // Print_Classtable();
   };
 | {}
 ;
@@ -214,6 +227,10 @@ Gdecl : Type GidList ';' {
       printf("ERROR:function return type cannot be a Class: %s\n",varList->varname);
       return -1;
     }
+    if(isClassType && (Gentry->row>=2 || Gentry->col!=-1)){
+      printf("ERROR: Array of Class type currently not permitted!\n");
+      return -1;
+    }
     if( (Gentry->type!=NULL) && strcmp(Gentry->type->name,"pointer")==0){ //if variable inserted as a pointer type
       if(strcmp(declaration_type,"int")==0){
         Gentry->type = TLookup("pointer(int)");
@@ -225,6 +242,14 @@ Gdecl : Type GidList ';' {
         printf("ERROR: pointers are not reserved for user-defined type: %s\n",declaration_type);
         return -1;
       }
+    }
+    if(isClassType){//class-type
+      Gentry->binding = binding_pos;
+      Gentry->size = 2;
+      binding_pos+=2;
+    }else{ //user-defined type
+      Gentry->binding = binding_pos;
+      binding_pos+=Gentry->size;
     }
     Gentry->type = declaration_type_entry;
     Gentry->Ctype = class_table_entry;
@@ -614,11 +639,16 @@ NewStmt : Identifier '=' NEW '(' Type ')' ';' {
       printf("ERROR: syntax error NEW assignment to non-class type\n");
       return -1;
     }
-    if(strcmp($1->Ctype->name,$5)!=0){
+    struct Classtable* arguement_class = Clookup($5);
+    // printf("%s\n",arguement_class->name);
+    if(!IsDescendant(arguement_class,$1->Ctype)){
       printf("ERROR: class type mismatch in NEW statement\n");
       return -1;
     }
-    $$=makeNonLeafNode($1,NULL,NEW_NODE,"_");
+    //arguement node is created for checking run-time binding ....
+    struct tnode* arguement_node = makeNonLeafNode(NULL,NULL,NEW_ARG_NODE,"_");
+    arguement_node->Ctype = arguement_class;
+    $$=makeNonLeafNode($1,arguement_node,NEW_NODE,"_");
   }
 
 // DeleteStmt : DELETE '(' ID ')' ';' {};
@@ -742,7 +772,7 @@ Identifier : ID {
         struct Gsymbol* Gentry = IDNode->Gentry;
         if(IDNode->nodetype==ARRAY_NODE){
           Gentry=IDNode->left->Gentry;
-          printf("%d\n",IDNode->right->nodetype);
+          // printf("%d\n",IDNode->right->nodetype);
         }
         addressNode->type = (strcmp(Gentry->type->name,"int")==0 || strcmp(Gentry->type->name,"pointer(int)")==0 )
                                 ? TLookup("pointer(int)")

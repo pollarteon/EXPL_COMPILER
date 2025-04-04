@@ -236,6 +236,8 @@ int check_identifier(struct tnode* t);
 
 int returnStmt_checker(struct tnode* t,Typetable* type);
 
+int methodlist_validifier(struct ClassTable* class);
+
 void preorder(struct tnode* t);
 // /*Make a tnode with opertor, left and right branches set*/
 // struct tnode *makeOperatorNode(char c, struct tnode *l, struct tnode *r);

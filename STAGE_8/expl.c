@@ -94,17 +94,19 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
 	{
 		int is_pointer = 0;
 		temp->op = op;
-		if ((l->Ctype != NULL) || r->Ctype != NULL)
-		{
-			printf("%s\n", temp->op);
-			// printf("%s %s\n", l->type->name, r->type->name);
-			printf("ERROR: classes not used in expression evaluation/ assignments\n");
-			exit(1);
+		int isClassOperand =0;
+		
+		if(l->Ctype || r->Ctype){
+			isClassOperand =1;
 		}
+
 		if (strcmp(op, "+") == 0 || strcmp(op, "-") == 0 || strcmp(op, "/") == 0 || strcmp(op, "*") == 0 || strcmp(op, "%") == 0)
 		{
 
-			// printf("%d %d\n",l->type,r->type);
+			if(isClassOperand){
+				printf("ERROR: Arithmetic operations not allowed on class objects\n");
+				exit(1);
+			}
 			if (strcmp(l->type->name, "pointer(int)") == 0)
 			{
 				if (strcmp(r->type->name, "int") != 0)
@@ -213,6 +215,10 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
 		}
 		else if (strcmp(op, "=") != 0)
 		{
+			if(isClassOperand){
+				printf("ERROR: Boolean operations not allowed on class objects\n");
+				exit(1);
+			}
 			if (strcmp(op, "==") && strcmp(op, "!="))
 				if (!strcmp(l->type->name, "null") || !strcmp(r->type->name, "null"))
 				{
@@ -232,8 +238,21 @@ struct tnode *makeNonLeafNode(struct tnode *l, struct tnode *r, int nodeType, ch
 				printf("ERROR: & is an lval operator\n");
 				exit(1);
 			}
-
-			if (strcmp(l->type->name, r->type->name)) // types are not matching
+			if(isClassOperand){
+				if(l->Ctype==NULL || r->Ctype==NULL){
+					printf("ERROR: assignment mismatch class and user defined type\n");
+					exit(1);
+				}
+				if(!IsDescendant(r->Ctype,l->Ctype)){
+					printf("ERROR: rhs class is not a descendant of lhs class\n");
+					exit(1);
+				}
+				temp->left = l;
+				temp->right = r;
+				temp->middle = NULL;
+				return temp;
+			}
+			else if (strcmp(l->type->name, r->type->name)) // types are not matching
 			{
 				if (strcmp(r->type->name, "null") == 0)
 				{
@@ -548,10 +567,20 @@ struct Classtable *CInstall(char *name, char *parent_class_name)
 	entry->memberField = NULL;
 	entry->Vfuncptr = NULL;
 	entry->class_index = class_index++;
-	entry->field_count = -1;	// field count not set initially
-	entry->method_count = -1; // member count not set initially
+	entry->field_count = 0;	// field count not set initially
+	entry->method_count = 0; // member count not set initially
 	entry->next = NULL;
-
+	entry->parentPtr = parent_class_name ? Clookup(parent_class_name) : NULL;
+	if (entry->parentPtr == NULL && parent_class_name != NULL)
+	{
+		printf("ERROR: Parent class not found\n");
+		exit(1);
+	}
+	if(entry->parentPtr!=NULL){
+		CopyFieldsAndMethods(entry,entry->parentPtr);
+		PrintFieldlist(entry->memberField);
+		methodlist_validifier(entry);
+	}
 	Classtable *temp = class_table;
 	// Print_Classtable();
 	if (temp == NULL)
@@ -595,8 +624,45 @@ void Class_Minstall(struct Classtable *cptr, char *name, struct Typetable *type,
 	{
 		if (strcmp(temp->name, name) == 0)
 		{
-			printf("ERROR:member functions cannot have the same name!!%s\n", temp->name);
-			exit(1);
+			//permitting overriding of functions
+			if(cptr->parentPtr!=NULL){
+				struct Memberfunclist* parent_method = Class_Mlookup(cptr->parentPtr,name);
+				if(parent_method==NULL){
+					printf("ERROR:member functions cannot have the same name!!%s\n", temp->name);
+					exit(1);
+				}
+				else{//parent method with the same name exists
+					// printf("%s %s\n",parent_method->type->name,type->name);
+					if(strcmp(parent_method->type->name,type->name)==0){
+						struct ParamList* parent_param = parent_method->paramlist;
+						struct ParamList* child_param = Paramlist;
+						int verify_func_signature = 1;
+						while(parent_param!=NULL && child_param!=NULL){
+							if(strcmp(parent_param->name,child_param->name)!=0 || strcmp(parent_param->type->name,child_param->type->name)!=0){
+								verify_func_signature =0;
+							}
+							parent_param = parent_param->next;
+							child_param = child_param->next;
+						}
+						if(verify_func_signature){
+							//here create override the method the entry in function tablle with a new flabel
+							temp->Flabel = --flabel;
+							flabel++;
+							// printf("WARNING: Overriding function %s\n",temp->name);
+							return;
+						}else{
+							printf("ERROR: Function signature mismatch!! cannot override%s\n", temp->name);
+							exit(1);
+						}
+					}else{
+						printf("ERROR: Function return type mismatch!! cannot override%s\n", temp->name);
+						exit(1);
+					}
+				}
+			}else{
+				printf("ERROR:member functions cannot have the same name!!%s\n", temp->name);
+				exit(1);
+			}
 		}
 		if (temp->next == NULL)
 			break;
@@ -612,6 +678,7 @@ void Class_Finstall(struct Classtable *cptr, struct Fieldlist *field)
 	if (temp == NULL)
 	{
 		cptr->memberField = field;
+		(cptr->field_count)++;
 		return;
 	}
 	while (temp->next != NULL)
@@ -619,6 +686,7 @@ void Class_Finstall(struct Classtable *cptr, struct Fieldlist *field)
 		temp = temp->next;
 	}
 	temp->next = field;
+	(cptr->field_count)++;
 	return;
 }
 
@@ -664,6 +732,17 @@ Fieldlist *Class_Flookup(Classtable *CType, char *name)
 	return temp;
 }
 
+int IsDescendant(struct Classtable* child, struct Classtable* parent){
+	if(child==NULL || parent==NULL) return 0;
+	if(child==parent) return 1;
+	struct Classtable* temp = child;
+	while(temp!=NULL){
+		if(temp==parent) return 1;
+		temp = temp->parentPtr;
+	}
+	return 0;
+}
+
 void Print_Classtable()
 {
 	Classtable *temp = class_table;
@@ -679,15 +758,96 @@ void Print_Classtable()
 
 void Print_VirtFuncTable(struct Classtable *class)
 {
+	if(class==NULL) return;
 	struct Memberfunclist *temp = class->Vfuncptr;
 	printf("\n--------------------VIRTUAL TABLE---------------------\n");
 	while (temp != NULL)
 	{
-		printf("|---%s(%d)---|", temp->name, temp->Flabel);
+		printf("|---%s(%d)(%d)---|", temp->name, temp->Flabel,temp->Funcposition);
 		temp = temp->next;
 	}
 	printf("\n\n");
 	return;
+}
+
+int methodlist_validifier(struct Classtable* class){
+	struct Memberfunclist* temp = class->Vfuncptr;
+	int no_of_methods =0;
+	while(temp!=NULL){
+		if(no_of_methods>7){
+			printf("ERROR: More than 8 methods in a class\n");
+			exit(1);
+		}
+		temp->Funcposition = no_of_methods; //setting the function index
+		no_of_methods++;
+		temp = temp->next;
+	}
+	class->method_count = no_of_methods;
+	return 1;
+}
+
+void CopyFieldsAndMethods(struct Classtable* child, struct Classtable* parent) {
+    if (parent == NULL || child == NULL) {
+        printf("ERROR: Parent or Child class is NULL\n");
+        exit(1);
+    }
+
+    // Copy fields
+    struct Fieldlist *parentField = parent->memberField;
+    struct Fieldlist *childField = NULL;
+    struct Fieldlist *lastChildField = NULL;
+	int fieldIndex=0;
+    while (parentField != NULL) {
+        // Create a new field for the child
+        struct Fieldlist *newField = (struct Fieldlist *)malloc(sizeof(struct Fieldlist));
+        newField->name = strdup(parentField->name);
+        newField->fieldIndex = fieldIndex++;
+        newField->type = parentField->type;
+        newField->ctype = parentField->ctype;
+        newField->next = NULL;
+
+        // Add the new field to the child's field list
+        if (childField == NULL) {
+            child->memberField = newField;
+            childField = newField;
+        } else {
+            lastChildField->next = newField;
+        }
+        lastChildField = newField;
+
+        parentField = parentField->next;
+    }
+
+    // Copy methods
+    struct Memberfunclist *parentMethod = parent->Vfuncptr;
+    struct Memberfunclist *childMethod = NULL;
+    struct Memberfunclist *lastChildMethod = NULL;
+	
+    while (parentMethod != NULL) {
+        // Create a new method for the child
+        struct Memberfunclist *newMethod = (struct Memberfunclist *)malloc(sizeof(struct Memberfunclist));
+        newMethod->name = strdup(parentMethod->name);
+        newMethod->type = parentMethod->type;
+        newMethod->paramlist = parentMethod->paramlist; // Assuming paramlist is shared
+        newMethod->Funcposition = parentMethod->Funcposition;
+        newMethod->Flabel = parentMethod->Flabel;
+        newMethod->next = NULL;
+
+        // Add the new method to the child's method list
+        if (childMethod == NULL) {
+            child->Vfuncptr = newMethod;
+            childMethod = newMethod;
+        } else {
+            lastChildMethod->next = newMethod;
+        }
+        lastChildMethod = newMethod;
+
+        parentMethod = parentMethod->next;
+    }
+
+    // Update field and method counts
+    child->field_count = parent->field_count;
+    child->method_count = parent->method_count;
 }
 
 //----------GLOBAL SYMBOL TABLE FUNCTIONS --------------------------
@@ -720,15 +880,11 @@ void G_Install(char *name, Typetable *type, int row, int col, struct ParamList *
 		new_Entry->size = row * col;
 	new_Entry->row = row;
 	new_Entry->col = col;
-	new_Entry->binding = binding_pos;
 	new_Entry->Ctype = NULL;
-	if (col == -1)
-		binding_pos += row;
-	else
-		binding_pos += row * col;
 	new_Entry->next = NULL;
 	new_Entry->param_list = param_list;
 	new_Entry->flabel = flabel;
+	new_Entry->allocated = 0;
 	if (G_symbol_table == NULL)
 	{
 		G_symbol_table = new_Entry;
@@ -860,8 +1016,6 @@ int field_validifier(struct tnode *field_node)
 			{
 				curr_type = curr_field->type;
 				curr_ctype = curr_field->ctype;
-				// if(field_node->type) printf("type: %s\n",field_node->type->name);
-				// if(field_node->Ctype) printf("class_type: %s\n",field_node->Ctype->name);
 				if (curr_ctype)
 					isClassType = 1;
 				else
@@ -897,7 +1051,6 @@ int check_identifier(struct tnode *IDnode)
 		IDnode->type = Lentry->type;
 		return 2;
 	}
-
 	if (Gentry != NULL)
 	{
 		IDnode->type = Gentry->type;
@@ -1107,6 +1260,61 @@ int verify_func_signature(struct FuncArgs *arg_list, struct ParamList *param_lis
 	return 0;
 }
 
+//========================================================================================
+// to prevent redundant memory allocs during flow statements
+//========================================================================================
+
+struct AllocatedList* allocated_list = NULL;
+
+void Allocated_list_Install(int allocated) {
+    struct AllocatedList* new_entry = (struct AllocatedList*)malloc(sizeof(struct AllocatedList));
+    if (!new_entry) {
+        printf("Memory allocation failed!\n");
+        exit(1);
+    }
+    new_entry->allocated = allocated;
+    new_entry->next = NULL;  
+
+    if (!allocated_list) { 
+        allocated_list = new_entry;
+        return;
+    }
+
+    struct AllocatedList* temp = allocated_list;
+    while (temp->next) {
+        temp = temp->next;
+    }
+    temp->next = new_entry;  
+}
+
+void freeAllocatedList() {
+    struct AllocatedList* temp;
+    
+    while (allocated_list) {
+        temp = allocated_list;
+        allocated_list = allocated_list->next;
+        free(temp);
+    }
+}
+
+void createAllocatedList() {
+    struct Gsymbol* Gsym_temp = G_symbol_table;
+    while (Gsym_temp) {
+        Allocated_list_Install(Gsym_temp->allocated);
+        Gsym_temp = Gsym_temp->next;
+    }
+}
+
+void restoreGlobalAllocation() {
+    struct Gsymbol* Gsym_temp = G_symbol_table;
+    struct AllocatedList* alloc_temp = allocated_list;
+    
+    while (Gsym_temp && alloc_temp) { 
+        Gsym_temp->allocated = alloc_temp->allocated;
+        Gsym_temp = Gsym_temp->next;
+        alloc_temp = alloc_temp->next;
+    }
+}
 //========================================================================================
 
 void preorder(struct tnode *root)

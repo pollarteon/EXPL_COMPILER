@@ -67,7 +67,7 @@
 "{" {return *yytext;}
 "}" {return *yytext;}
 "." {return *yytext;}
-["][a-zA-Z0-9_ -]*["] {
+["][a-zA-Z0-9 .]*["] {
     // printf("%s\n",yytext);
     yylval.no = createNode(-1,1,-1,TLookup("str"),NULL,yytext,CONST_NODE,NULL,NULL);
     return STRING;

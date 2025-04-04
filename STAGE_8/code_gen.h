@@ -43,6 +43,8 @@ int field_code_gen(struct tnode* t,FILE* target_file,int expr);
 void header_code_gen(FILE* target_file);
 void function_begin_code_gen(FILE* target_file, struct Lsymbol* Ltable);
 void function_end_code_gen(FILE* target_file,struct Lsymbol* Ltable);
+void entry_code_gen(FILE* target_file);
+void VFunctionTable_code_gen(FILE* target_file,struct Classtable* class_table);
 
 // void push_arguements(FILE* target_file,struct Lsymbol* Ltable);
 
