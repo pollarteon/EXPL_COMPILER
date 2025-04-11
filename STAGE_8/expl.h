@@ -167,7 +167,7 @@ void Class_Minstall(struct Classtable* cptr,char* name,struct Typetable* type,st
 
 void Class_Finstall(struct Classtable* cptr,struct Fieldlist* field);
 
-struct Memberfunclist* Class_Mlookup(struct Classtable* Ctype,char* name);
+struct Memberfunclist* Class_Mlookup(struct Classtable* Ctype,char* name,struct ParamList* paramlist);
 
 struct Fieldlist* Class_Flookup(struct Classtable* CType,char* name);
 
@@ -261,6 +261,7 @@ void createAllocatedList();
 void restoreGlobalAllocation();
 
 void freeAllocatedList();
+int CompareParamLists(struct ParamList *p1, struct ParamList *p2) ;
 
 void preorder(struct tnode* t);
 // /*Make a tnode with opertor, left and right branches set*/

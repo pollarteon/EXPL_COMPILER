@@ -683,18 +683,21 @@ int function_code_gen(struct tnode *t, FILE *target_file)
     int isMethod =0;
     int method_index =-1;
     int Flabel_reg; //Method invocatation...
+    struct FuncArgs *arg_list = t->argList;
 
     if(t->right){//Function is a class Method
-        struct Memberfunclist* member_function = Class_Mlookup(t->right->Ctype,t->left->varname);
+        struct ParamList* paramlistFunctionNode = Convert_arg_to_params(arg_list);
+        struct Memberfunclist* member_function = Class_Mlookup(t->right->Ctype,t->left->varname,paramlistFunctionNode);
         f_label = member_function->Flabel;
+        printf("flabel(code_gen):%d\n",f_label);
         isMethod =1;
         method_index = member_function->Funcposition;
-        // printf("Method Index = %d\n",method_index);
+        printf("Method Index = %d\n",method_index);
     }else{//normal function
         f_label = t->Gentry->flabel;
     }
     
-    struct FuncArgs *arg_list = t->argList;
+    
     struct FuncArgs *reversed_args = reverse_arglist(arg_list);
     int reg_index = 0;
     int return_val_reg;

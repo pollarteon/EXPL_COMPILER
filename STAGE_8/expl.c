@@ -493,14 +493,14 @@ struct Fieldlist *Finstall(struct Fieldlist *fields, struct Fieldlist *field)
 		if (strcmp(temp->name, field->name) == 0)
 		{
 			printf("ERROR: Duplicate field name '%s' in user-defined type/class\n", field->name);
-			exit(1); // or return NULL, depending on how you want to handle it
+			exit(1); // or return -1;
 		}
 		temp = temp->next;
 	}
 	if (strcmp(temp->name, field->name) == 0)
 	{
 		printf("ERROR: Duplicate field name '%s' in user-defined type/class\n", field->name);
-		exit(1); // or return NULL, depending on how you want to handle it
+		exit(1); // or return -1;
 	}
 	// Add the new field to the list
 	temp->next = field;
@@ -608,67 +608,47 @@ struct Classtable *CInstall(char *name, char *parent_class_name)
 void Class_Minstall(struct Classtable *cptr, char *name, struct Typetable *type, struct ParamList *Paramlist)
 {
 	Memberfunclist *temp = cptr->Vfuncptr;
-	Memberfunclist *member_entry = (Memberfunclist *)malloc(sizeof(Memberfunclist));
-	member_entry->name = strdup(name);
-	member_entry->type = type;
-	member_entry->paramlist = Paramlist;
-	member_entry->Funcposition = member_function_pos++;
-	member_entry->Flabel = flabel++;
-	member_entry->next = NULL;
-	if (temp == NULL)
-	{
-		cptr->Vfuncptr = member_entry;
-		return;
-	}
-	while (temp != NULL)
-	{
-		if (strcmp(temp->name, name) == 0)
-		{
-			//permitting overriding of functions
-			if(cptr->parentPtr!=NULL){
-				struct Memberfunclist* parent_method = Class_Mlookup(cptr->parentPtr,name);
-				if(parent_method==NULL){
-					printf("ERROR:member functions cannot have the same name!!%s\n", temp->name);
-					exit(1);
-				}
-				else{//parent method with the same name exists
-					// printf("%s %s\n",parent_method->type->name,type->name);
-					if(strcmp(parent_method->type->name,type->name)==0){
-						struct ParamList* parent_param = parent_method->paramlist;
-						struct ParamList* child_param = Paramlist;
-						int verify_func_signature = 1;
-						while(parent_param!=NULL && child_param!=NULL){
-							if(strcmp(parent_param->name,child_param->name)!=0 || strcmp(parent_param->type->name,child_param->type->name)!=0){
-								verify_func_signature =0;
-							}
-							parent_param = parent_param->next;
-							child_param = child_param->next;
-						}
-						if(verify_func_signature){
-							//here create override the method the entry in function tablle with a new flabel
-							temp->Flabel = --flabel;
-							flabel++;
-							// printf("WARNING: Overriding function %s\n",temp->name);
-							return;
-						}else{
-							printf("ERROR: Function signature mismatch!! cannot override%s\n", temp->name);
-							exit(1);
-						}
-					}else{
-						printf("ERROR: Function return type mismatch!! cannot override%s\n", temp->name);
-						exit(1);
-					}
-				}
-			}else{
-				printf("ERROR:member functions cannot have the same name!!%s\n", temp->name);
-				exit(1);
-			}
-		}
-		if (temp->next == NULL)
-			break;
-		temp = temp->next;
-	}
-	temp->next = member_entry;
+    Memberfunclist *prev = NULL;
+    Memberfunclist *member_entry = (Memberfunclist *)malloc(sizeof(Memberfunclist));
+    member_entry->name = strdup(name);
+    member_entry->type = type;
+    member_entry->paramlist = Paramlist;
+    member_entry->Funcposition = member_function_pos++;
+    member_entry->Flabel = flabel++;
+    member_entry->next = NULL;
+    if (temp == NULL) {
+        cptr->Vfuncptr = member_entry;
+        return;
+    }
+
+    // Traverse Vfuncptr list to find matching method (for overriding)
+    while (temp != NULL) {
+        if (strcmp(temp->name, name) == 0 && CompareParamLists(temp->paramlist, Paramlist)) {
+         
+            if (cptr->parentPtr != NULL) {
+                Memberfunclist *parent_method = Class_Mlookup(cptr->parentPtr, name, Paramlist);
+                if (!parent_method) {
+                    printf("Error: Same method declared twice: %s\n", name);
+                    exit(1);
+                }
+
+                if (!temp->type || !type || strcmp(temp->type->name, type->name) != 0) {
+                    printf("ERROR: Return type mismatch in overridden method: %s\n", name);
+                    exit(1);
+                }
+                temp->Flabel = --flabel;//add the new label
+                flabel++;  
+                return;
+            } else {
+                printf("Error: Same method declared twice in class: %s\n", name);
+                exit(1);
+            }
+        }
+
+        prev = temp;
+        temp = temp->next;
+    }
+	prev->next = member_entry;
 	return;
 }
 
@@ -704,17 +684,36 @@ Classtable *Clookup(char *name)
 	return temp;
 }
 
-struct Memberfunclist *Class_Mlookup(Classtable *Ctype, char *name)
+struct Memberfunclist *Class_Mlookup(Classtable *Ctype, char *name,struct ParamList* paramlist)
 {
 	if (Ctype == NULL)
 		return NULL;
 	struct Memberfunclist *temp = Ctype->Vfuncptr;
+	
 	if (temp == NULL)
 		return NULL;
 	while (temp != NULL)
 	{
-		if (strcmp(temp->name, name) == 0)
-			break;
+		if (strcmp(temp->name, name) == 0){
+			struct ParamList* paramlist1 = temp->paramlist;
+		
+			struct ParamList* paramlist2 = paramlist;
+			while(paramlist1!= NULL && paramlist2!=NULL){
+				if(strcmp(paramlist1->type->name,paramlist2->type->name)==0){
+					paramlist1 = paramlist1->next;
+					paramlist2 = paramlist2->next;
+				}
+				else{
+					break;
+				}
+				if(paramlist1==NULL && paramlist2==NULL){
+					return temp;
+				}
+			}
+			if(paramlist1==NULL && paramlist2==NULL){
+				return temp;
+			}
+		}
 		temp = temp->next;
 	}
 	return temp;
@@ -798,7 +797,7 @@ void CopyFieldsAndMethods(struct Classtable* child, struct Classtable* parent) {
     struct Fieldlist *lastChildField = NULL;
 	int fieldIndex=0;
     while (parentField != NULL) {
-        // Create a new field for the child
+        // Create a new field entryfor the child
         struct Fieldlist *newField = (struct Fieldlist *)malloc(sizeof(struct Fieldlist));
         newField->name = strdup(parentField->name);
         newField->fieldIndex = fieldIndex++;
@@ -806,7 +805,7 @@ void CopyFieldsAndMethods(struct Classtable* child, struct Classtable* parent) {
         newField->ctype = parentField->ctype;
         newField->next = NULL;
 
-        // Add the new field to the child's field list
+        // Add the new field to the child fieldlist
         if (childField == NULL) {
             child->memberField = newField;
             childField = newField;
@@ -818,22 +817,22 @@ void CopyFieldsAndMethods(struct Classtable* child, struct Classtable* parent) {
         parentField = parentField->next;
     }
 
-    // Copy methods
+    // Copying methods
     struct Memberfunclist *parentMethod = parent->Vfuncptr;
     struct Memberfunclist *childMethod = NULL;
     struct Memberfunclist *lastChildMethod = NULL;
 	
     while (parentMethod != NULL) {
-        // Create a new method for the child
+        
         struct Memberfunclist *newMethod = (struct Memberfunclist *)malloc(sizeof(struct Memberfunclist));
         newMethod->name = strdup(parentMethod->name);
         newMethod->type = parentMethod->type;
-        newMethod->paramlist = parentMethod->paramlist; // Assuming paramlist is shared
+        newMethod->paramlist = parentMethod->paramlist; 
         newMethod->Funcposition = parentMethod->Funcposition;
         newMethod->Flabel = parentMethod->Flabel;
         newMethod->next = NULL;
 
-        // Add the new method to the child's method list
+        
         if (childMethod == NULL) {
             child->Vfuncptr = newMethod;
             childMethod = newMethod;
@@ -1210,7 +1209,7 @@ struct ParamList *create_param_list(Typetable *type, char *name)
 {
 	ParamList *new_param = (ParamList *)malloc(sizeof(ParamList));
 	new_param->type = type;
-	new_param->name = strdup(name);
+	new_param->name = name ? strdup(name):NULL;
 	new_param->next = NULL;
 	return new_param;
 }
@@ -1268,10 +1267,6 @@ struct AllocatedList* allocated_list = NULL;
 
 void Allocated_list_Install(int allocated) {
     struct AllocatedList* new_entry = (struct AllocatedList*)malloc(sizeof(struct AllocatedList));
-    if (!new_entry) {
-        printf("Memory allocation failed!\n");
-        exit(1);
-    }
     new_entry->allocated = allocated;
     new_entry->next = NULL;  
 
@@ -1315,7 +1310,29 @@ void restoreGlobalAllocation() {
         alloc_temp = alloc_temp->next;
     }
 }
+
+struct ParamList* Convert_arg_to_params(struct FuncArgs* arglist){
+	struct ParamList* paramlist = NULL;
+	struct FuncArgs* arg_temp = arglist;
+	while(arg_temp!=NULL){
+		struct ParamList* new_param = create_param_list(arg_temp->arguement->type,arg_temp->arguement->varname);
+		paramlist = append_param_list(paramlist,new_param);
+		arg_temp = arg_temp->next;
+	}
+	return paramlist;
+}
+
+int CompareParamLists(struct ParamList *p1, struct ParamList *p2) {
+    while (p1 && p2) {
+        if (strcmp(p1->type->name, p2->type->name) != 0) return 0;
+        p1 = p1->next;
+        p2 = p2->next;
+    }
+    return (p1 == NULL && p2 == NULL);
+}
 //========================================================================================
+
+
 
 void preorder(struct tnode *root)
 {

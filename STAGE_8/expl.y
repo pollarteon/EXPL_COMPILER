@@ -150,8 +150,8 @@ Classdef : Cname '{' DECL CFieldlists MethodDecl ENDDECL MethodDefns '}' {
     class->field_count = field_index;
     // PrintFieldlist(class->memberField);
     methodlist_validifier(class);
-    // Print_VirtFuncTable(cptr);
-    // Print_VirtFuncTable(class->parentPtr);
+    Print_VirtFuncTable(cptr);
+    Print_VirtFuncTable(class->parentPtr);
     cptr=NULL;
     class_field_index =0;
     binding_pos+=8;
@@ -192,11 +192,11 @@ MethodDecl : Mdecl MethodDecl {L_cleanup();local_binding=1;param_binding=1;}
 Mdecl : TypeName ID '(' ParamList ')' ';'{
   
   Class_Minstall(cptr,$2->varname,TLookup($1),$4);
-  // Print_VirtFuncTable(cptr);
+  Print_VirtFuncTable(cptr);
 }
 | TypeName ID '(' ')' ';' {
   Class_Minstall(cptr,$2->varname,TLookup($1),NULL);
-  // Print_VirtFuncTable(cptr);
+  Print_VirtFuncTable(cptr);
 }
 MethodDefns : FdefBlock {
     // Print_Classtable();
@@ -306,7 +306,7 @@ Fdef : Type ID '(' ParamList ')' '{' LdeclBlock Body '}' {
   int is_member_function =0;
   self_binded=0;
   if(cptr){
-     member_function = Class_Mlookup(cptr,$2->varname);
+     member_function = Class_Mlookup(cptr,$2->varname,$4);
      if(member_function==NULL){
       printf("ERROR: member function (%s) not declared in class %s\n",$2->varname,cptr->name);
       return -1;
@@ -379,7 +379,7 @@ Fdef : Type ID '(' ParamList ')' '{' LdeclBlock Body '}' {
   int is_member_function =0;
   self_binded =0;
   if(cptr){
-     member_function = Class_Mlookup(cptr,$2->varname);
+     member_function = Class_Mlookup(cptr,$2->varname,NULL);
      if(member_function==NULL){
       printf("ERROR: member function (%s) not declared in class %s\n",$2->varname,cptr->name);
       return -1;
@@ -478,6 +478,7 @@ MainBlock : INT MAIN '(' ')' '{' LdeclBlock Body '}' {
     print_Ltable();
     entry_code_gen(target_file);
     printf("Preorder of Syntax Tree : ");
+    print_GSymbolTable();
     preorder($7);
     printf("\n\n");
     returnStmt_checker($7,TLookup("int"));
@@ -604,6 +605,7 @@ OutputStmt : WRITE '(' expr ')' ';' {$$ = makeNonLeafNode($3,NULL,WRITE_NODE,"_"
 
 AsgStmt : Identifier '=' expr ';' {
   // printf("%s\n",$1->Gentry->name);
+  // printf("%s\n",$1->varname);
   $$ = makeNonLeafNode($1,$3,OPERATOR_NODE,"=");
   };
 
@@ -635,12 +637,16 @@ FreeStmt : FREE '(' Identifier ')' ';' {$$=makeNonLeafNode($3,NULL,FREE_NODE,"_"
 ;
 
 NewStmt : Identifier '=' NEW '(' Type ')' ';' {
+   
     if($1->Ctype==NULL){
+      
       printf("ERROR: syntax error NEW assignment to non-class type\n");
       return -1;
     }
+    
     struct Classtable* arguement_class = Clookup($5);
     // printf("%s\n",arguement_class->name);
+    
     if(!IsDescendant(arguement_class,$1->Ctype)){
       printf("ERROR: class type mismatch in NEW statement\n");
       return -1;
@@ -842,7 +848,11 @@ FieldFunction : ID '.' ID '(' ArgList ')'{
   struct tnode* function_node = makeNonLeafNode($3,$1,FUNCTION_NODE,"_");
 
   check_identifier($1);
-  struct Memberfunclist* member_function = Class_Mlookup($1->Ctype,$3->varname);
+  // printf("before arg to params\n");
+  struct ParamList* argParams = Convert_arg_to_params($5);
+  // printf("after arg to params\n");
+  struct Memberfunclist* member_function = Class_Mlookup($1->Ctype,$3->varname,argParams);
+  // printf("flabel: %d\n",member_function->Flabel);
   if(member_function==NULL){
     printf("ERROR: no such method exists for class %s\n",$1->Ctype->name);
     return -1;
@@ -862,7 +872,8 @@ FieldFunction : ID '.' ID '(' ArgList ')'{
   self_node->Ctype = cptr;
   field_node->Ctype= cptr;
   struct tnode* function_node = makeNonLeafNode($3,field_node,FUNCTION_NODE,"_");
-  struct Memberfunclist* member_function = Class_Mlookup(cptr,$3->varname);
+  struct ParamList* argParams = Convert_arg_to_params($5);
+  struct Memberfunclist* member_function = Class_Mlookup(cptr,$3->varname,argParams);
   if(member_function==NULL){
     printf("ERROR: no such method exists for class %s\n",cptr->name);
     return -1;
@@ -877,8 +888,8 @@ FieldFunction : ID '.' ID '(' ArgList ')'{
   struct tnode* field_node = makeNonLeafNode($1, NULL, FIELD_NODE, "_");
   field_validifier(field_node);  
   struct tnode* function_node = makeNonLeafNode($3,field_node,FUNCTION_NODE,"_");
- 
-  struct Memberfunclist* member_function = Class_Mlookup(field_node->Ctype,$3->varname);
+  struct ParamList* argParams = Convert_arg_to_params($5);
+  struct Memberfunclist* member_function = Class_Mlookup(field_node->Ctype,$3->varname,argParams);
   // Print_VirtFuncTable($1->Ctype);
   if(member_function==NULL){
     printf("ERROR: no such method exists for class %s\n",field_node->Ctype->name);
